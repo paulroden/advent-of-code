@@ -7,7 +7,12 @@ fn main() {
     let input_file_path = Path::new("../input");
     let input_values = read_input_lines(input_file_path).expect("could not read input file!");
 
-    let increase_count = input_values
+    let window_totals = input_values
+        .windows(3)
+        .map(|window| window.iter().sum())
+        .collect::<Vec<i32>>();
+
+    let increase_count = window_totals
         .windows(2)
         .map(|pair| {
             let next = pair[1];

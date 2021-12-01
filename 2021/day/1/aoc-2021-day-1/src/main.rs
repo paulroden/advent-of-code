@@ -1,14 +1,26 @@
+use std::cmp::Ordering;
 use std::fs::File;
-use std::path::Path;
 use std::io::{self, prelude::*, BufReader};
+use std::path::Path;
 
 fn main() {
     let input_file_path = Path::new("../input");
-    let text = read_input_lines(input_file_path).expect("could not read input file!");
+    let input_values = read_input_lines(input_file_path).expect("could not read input file!");
 
-    println!("{:?}", text);
+    let increase_count = input_values
+        .windows(2)
+        .map(|pair| {
+            let next = pair[1];
+            let current = pair[0];
+            match next.cmp(&current) {
+                Ordering::Greater => 1,
+                _ => 0,
+            }
+        })
+        .sum::<u32>();
+
+    println!("{}", increase_count);
 }
-
 
 fn read_input_lines(path: &Path) -> Result<Vec<i32>, io::Error> {
     let file = File::open(path)?;

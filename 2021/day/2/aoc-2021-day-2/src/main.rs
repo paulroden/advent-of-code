@@ -3,17 +3,17 @@ use std::path::Path;
 use std::str::FromStr;
 
 fn main() {
-    let s = "forward 7".to_string();
-
-    let d = Movement::from_str(&s);
-
-    println!("{:?}", d);
 
     let input_file_path = Path::new("../input");
 
-    let movements = input::read_lines(input_file_path, Movement::from_str);
+    let movements = input::read_lines(input_file_path, Movement::from_str)
+        .expect("Error parsing input to list of movements");
 
-    println!("{:?}", movements);
+    let initial_position = Position::new(0, 0);
+    let end_position = movements.iter().fold(initial_position, |p, displacement| p.displace(displacement));
+
+    println!("{:?}", end_position);
+    println!("{:?}", end_position.square_norm() );
 }
 
 #[derive(Debug)]
@@ -25,6 +25,47 @@ pub enum ParseError {
 impl From<ParseIntError> for ParseError {
     fn from(err: ParseIntError) -> Self {
         ParseError::ParseIntError(err)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Position {
+    x: i32,
+    y: i32,
+}
+
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl Position {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+    pub fn displace(&self, movement: &Movement) -> Self {
+        match movement.direction {
+            Direction::Forward => Position::new(
+                self.x + movement.distance,
+                self.y
+            ),
+            Direction::Backward => Position::new(
+                self.x - movement.distance,
+                self.y
+            ),
+            Direction::Up => Position::new(
+                self.x,
+                self.y - movement.distance
+            ),
+            Direction::Down => Position::new(
+                self.x,
+                self.y + movement.distance
+            ),
+        }
+    }
+    pub fn square_norm(&self) -> i32 {
+        self.x * self.y
     }
 }
 
@@ -134,4 +175,21 @@ fn can_parse_multiple_lines() {
         .collect::<Vec<_>>();
 
     assert_eq!(movements, expected);
+}
+
+
+#[test]
+fn movement_displces_position() {
+    use crate::Direction::*;
+    let initial_position = Position::new(0, 0);
+    let movements = vec![
+        Movement::new(Down, 5),
+        Movement::new(Forward, 7),
+        Movement::new(Forward, 3),
+        Movement::new(Up, 1),
+    ];
+
+    let end_position = movements.iter().fold(initial_position, |p, displacement| p.displace(displacement));
+
+    assert_eq!(end_position, Position::new(10, -4));
 }

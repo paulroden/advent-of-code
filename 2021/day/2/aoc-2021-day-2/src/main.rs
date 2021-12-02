@@ -56,6 +56,15 @@ pub struct DirectionalMovement {
     distance: i32,
 }
 
+impl DirectionalMovement {
+    pub fn new(direction: Direction, distance: i32) -> Self {
+        Self {
+            direction,
+            distance,
+        }
+    }
+}
+
 impl FromStr for DirectionalMovement {
     type Err = ParseError;
 
@@ -107,4 +116,22 @@ fn can_parse_single_line() {
             distance: 7
         }
     );
+}
+
+#[test]
+fn can_parse_multiple_lines() {
+    use crate::Direction::*;
+    let input_text = "down 5\nforward 7\nforward 3\n";
+    let expected = vec![
+        DirectionalMovement::new(Down, 5),
+        DirectionalMovement::new(Forward, 7),
+        DirectionalMovement::new(Forward, 3),
+    ];
+
+    let movements = input_text
+        .lines()
+        .map(|line| DirectionalMovement::from_str(line).unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(movements, expected);
 }

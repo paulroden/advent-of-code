@@ -1,4 +1,5 @@
 use std::num::ParseIntError;
+use std::path::Path;
 use std::str::FromStr;
 
 fn main() {
@@ -7,10 +8,16 @@ fn main() {
     let d = DirectionalMovement::from_str(&s);
 
     println!("{:?}", d);
+
+    let input_file_path = Path::new("../input");
+
+    let movements = input::read_lines(input_file_path, DirectionalMovement::from_str);
+
+    println!("{:?}", movements);
 }
 
 #[derive(Debug)]
-enum ParseError {
+pub enum ParseError {
     ParseIntError(ParseIntError),
     ParseDirectionError,
 }
@@ -22,7 +29,7 @@ impl From<ParseIntError> for ParseError {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Forward,
@@ -44,7 +51,7 @@ impl FromStr for Direction {
 }
 
 #[derive(Debug, PartialEq)]
-struct DirectionalMovement {
+pub struct DirectionalMovement {
     direction: Direction,
     distance: i32,
 }
@@ -64,23 +71,23 @@ impl FromStr for DirectionalMovement {
 }
 
 mod input {
+    use crate::ParseError;
     use std::fs::File;
     use std::io::{self, prelude::*, BufReader};
     use std::path::Path;
 
-    fn read_lines<T, P>(path: &Path, line_parser: P) -> Result<Vec<T>, io::Error>
+    pub fn read_lines<T, P>(path: &Path, line_parser: P) -> Result<Vec<T>, io::Error>
     where
-        P: FnOnce(&str) -> T,
+        P: Fn(&str) -> Result<T, ParseError>,
         T: std::str::FromStr,
     {
         let file = File::open(path)?;
         let buffer = BufReader::new(file);
-
         let mut lines = Vec::new();
 
         for line in buffer.lines() {
             if let Some(line) = &line.ok() {
-                if let Ok(number) = line.parse::<T>() {
+                if let Ok(number) = line_parser(line) {
                     lines.push(number)
                 }
             }

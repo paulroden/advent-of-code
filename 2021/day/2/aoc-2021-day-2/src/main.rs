@@ -5,13 +5,13 @@ use std::str::FromStr;
 fn main() {
     let s = "forward 7".to_string();
 
-    let d = DirectionalMovement::from_str(&s);
+    let d = Movement::from_str(&s);
 
     println!("{:?}", d);
 
     let input_file_path = Path::new("../input");
 
-    let movements = input::read_lines(input_file_path, DirectionalMovement::from_str);
+    let movements = input::read_lines(input_file_path, Movement::from_str);
 
     println!("{:?}", movements);
 }
@@ -51,12 +51,12 @@ impl FromStr for Direction {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct DirectionalMovement {
+pub struct Movement {
     direction: Direction,
     distance: i32,
 }
 
-impl DirectionalMovement {
+impl Movement {
     pub fn new(direction: Direction, distance: i32) -> Self {
         Self {
             direction,
@@ -65,7 +65,7 @@ impl DirectionalMovement {
     }
 }
 
-impl FromStr for DirectionalMovement {
+impl FromStr for Movement {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -108,10 +108,10 @@ mod input {
 #[test]
 fn can_parse_single_line() {
     let line = "forward 7".to_string();
-    let parsed = DirectionalMovement::from_str(&line).unwrap();
+    let parsed = Movement::from_str(&line).unwrap();
     assert_eq!(
         parsed,
-        DirectionalMovement {
+        Movement {
             direction: Direction::Forward,
             distance: 7
         }
@@ -123,14 +123,14 @@ fn can_parse_multiple_lines() {
     use crate::Direction::*;
     let input_text = "down 5\nforward 7\nforward 3\n";
     let expected = vec![
-        DirectionalMovement::new(Down, 5),
-        DirectionalMovement::new(Forward, 7),
-        DirectionalMovement::new(Forward, 3),
+        Movement::new(Down, 5),
+        Movement::new(Forward, 7),
+        Movement::new(Forward, 3),
     ];
 
     let movements = input_text
         .lines()
-        .map(|line| DirectionalMovement::from_str(line).unwrap())
+        .map(|line| Movement::from_str(line).unwrap())
         .collect::<Vec<_>>();
 
     assert_eq!(movements, expected);

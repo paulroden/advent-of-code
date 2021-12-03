@@ -9,7 +9,7 @@ fn main() {
     let movements = input::read_lines(input_file_path, Movement::from_str)
         .expect("Error parsing input to list of movements");
 
-    let initial_position = Position::new(0, 0);
+    let initial_position = Position::new(0, 0, 0);
     let end_position = movements.iter().fold(initial_position, |p, displacement| p.displace(displacement));
 
     println!("{:?}", end_position);
@@ -28,39 +28,40 @@ impl From<ParseIntError> for ParseError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Position {
     x: i32,
     y: i32,
+    aim: i32,
 }
 
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
+        write!(f, "({}, {}; {})", self.x, self.y, self.aim)
     }
 }
 
 impl Position {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
+    pub fn new(x: i32, y: i32, aim: i32) -> Self {
+        Self { x, y, aim }
     }
     pub fn displace(&self, movement: &Movement) -> Self {
         match movement.direction {
             Direction::Forward => Position::new(
                 self.x + movement.distance,
-                self.y
+                self.y + (movement.distance * self.aim),
+                self.aim,
             ),
-            Direction::Backward => Position::new(
-                self.x - movement.distance,
-                self.y
-            ),
+            Direction::Backward => self.clone(),
             Direction::Up => Position::new(
                 self.x,
-                self.y - movement.distance
+                self.y,
+                self.aim - movement.distance,
             ),
             Direction::Down => Position::new(
                 self.x,
-                self.y + movement.distance
+                self.y,
+                self.aim + movement.distance,
             ),
         }
     }
@@ -181,15 +182,17 @@ fn can_parse_multiple_lines() {
 #[test]
 fn movement_displces_position() {
     use crate::Direction::*;
-    let initial_position = Position::new(0, 0);
+    let initial_position = Position::new(0, 0, 0);
     let movements = vec![
+        Movement::new(Forward, 5),
         Movement::new(Down, 5),
-        Movement::new(Forward, 7),
-        Movement::new(Forward, 3),
-        Movement::new(Up, 1),
+        Movement::new(Forward, 8),
+        Movement::new(Up, 3),
+        Movement::new(Down, 8),
+        Movement::new(Forward, 2),
     ];
 
     let end_position = movements.iter().fold(initial_position, |p, displacement| p.displace(displacement));
 
-    assert_eq!(end_position, Position::new(10, -4));
+    assert_eq!(end_position, Position::new(15, 60, 10));
 }

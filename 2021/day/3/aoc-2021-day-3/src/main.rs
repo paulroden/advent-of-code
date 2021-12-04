@@ -52,6 +52,7 @@ pub fn bit_vec_to_unsigned_int(bits: &[usize]) -> usize {
         .fold(0, |acc, (b, p)| acc + (p * 2_usize.pow(b as u32)))
 }
 
+#[allow(unused_imports)]
 mod tests {
     use std::io::BufRead;
     use crate::{common_bits, count_lines_of_bits};

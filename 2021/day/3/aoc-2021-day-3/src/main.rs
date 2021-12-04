@@ -3,11 +3,12 @@ use std::path::Path;
 fn main() {
     let input_file_path = Path::new("../input");
     let lines = input::file_by_line(input_file_path).unwrap();
-    
-    let position_counts = count_lines_of_bits(lines);
+    let line_width = 12;
+
+    let position_counts = count_lines_of_bits(lines, line_width);
 
     let base_10 = bit_vec_to_unsigned_int(&common_bits(&position_counts));
-    let mask = 2_usize.pow(BITS_PER_LINE.try_into().unwrap()) - 1;
+    let mask = 2_usize.pow(line_width.try_into().unwrap()) - 1;
     let gamma_rate = base_10;
     let epsilon_rate = !gamma_rate & mask;
 
@@ -17,12 +18,13 @@ fn main() {
 }
 
 
-const BITS_PER_LINE: usize = 12;
-
-pub fn count_lines_of_bits(lines: impl Iterator<Item = std::io::Result<String>>) -> (usize, Vec<usize>) {
+pub fn count_lines_of_bits(
+    lines: impl Iterator<Item = std::io::Result<String>>,
+    line_width: usize,
+) -> (usize, Vec<usize>) {
     lines
         .enumerate()
-        .fold((0, vec![0; BITS_PER_LINE]), |(_, bits), (i, line)| {
+        .fold((0, vec![0; line_width]), |(_, bits), (i, line)| {
             (i + 1, {
                 bits.iter()
                     .zip(line.unwrap().chars())
@@ -52,17 +54,42 @@ pub fn bit_vec_to_unsigned_int(bits: &[usize]) -> usize {
         .fold(0, |acc, (b, p)| acc + (p * 2_usize.pow(b as u32)))
 }
 
+pub fn infer_bit_width(input: &[u8]) -> usize {
+    input.iter().take_while(|b| **b != b'\n').cloned().count()
+}
+
 #[allow(unused_imports)]
 mod tests {
     use std::io::BufRead;
-    use crate::{common_bits, count_lines_of_bits};
+    use crate::*;
     
+    #[test]
+    fn infers_number_of_bits_per_line() {
+        assert_eq!(5, infer_bit_width(b"00100\n11110\n"));
+        assert_eq!(12, infer_bit_width(b"101000111100\n000011111101\n011100000100\n"));
+    }
+
+    #[test]
+    fn matches_supplied_example() {
+        let sample_input = b"00100\n11110\n10110\n10111\n10101\n01111\n00111\n11100\n10000\n11001\n00010\n01010\n";
+        let line_width = 5;
+        let position_counts = count_lines_of_bits(sample_input.lines(), line_width);
+
+        let base_10 = bit_vec_to_unsigned_int(&common_bits(&position_counts));
+        let mask = 2_usize.pow(line_width.try_into().unwrap()) - 1;
+        let gamma_rate = base_10;
+        let epsilon_rate = !gamma_rate & mask;
+        assert_eq!(gamma_rate, 22);
+        assert_eq!(epsilon_rate, 9);
+    }
+
     #[test]
     fn accumulates_lines_of_bits() {
         let sample =
             b"101000111100\n000011111101\n011100000100\n100100010000\n011110010100\n101001100000\n";
+        let line_width = 12;
 
-        let position_counts = count_lines_of_bits(sample.lines());
+        let position_counts = count_lines_of_bits(sample.lines(), line_width);
 
         assert_eq!(
             (6, vec![3, 2, 4, 3, 2, 2, 3, 4, 2, 4, 0, 1]),

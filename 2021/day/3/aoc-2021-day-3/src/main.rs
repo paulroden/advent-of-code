@@ -15,8 +15,14 @@ fn main() {
     println!("{:b}, {}", gamma_rate, gamma_rate);
     println!("0{:b}, {}", epsilon_rate, epsilon_rate);
     println!("{}", gamma_rate * epsilon_rate);
-}
 
+    println!("-------- Part 2 -------");
+
+    let lines = input::file_by_line(input_file_path).unwrap();
+    let (zeroes, ones) = split_lines_by_first_bit(lines);
+
+    println!("{:?}", zeroes);
+}
 
 pub fn count_lines_of_bits(
     lines: impl Iterator<Item = std::io::Result<String>>,
@@ -58,20 +64,39 @@ pub fn infer_bit_width(input: &[u8]) -> usize {
     input.iter().take_while(|b| **b != b'\n').cloned().count()
 }
 
+pub fn split_lines_by_first_bit(
+    lines: impl Iterator<Item = std::io::Result<String>>,
+    // line_width: usize,
+) -> (Vec<String>, Vec<String>) {
+    let mut zeros = Vec::new();
+    let mut ones = Vec::new();
+    for line in lines.flatten() {
+        match line.chars().next() {
+            Some('0') => zeros.push(line),
+            Some('1') => ones.push(line),
+            _ => (),
+        }
+    }
+    (zeros, ones)
+}
+
 #[allow(unused_imports)]
 mod tests {
-    use std::io::BufRead;
     use crate::*;
-    
+    use std::io::BufRead;
     #[test]
     fn infers_number_of_bits_per_line() {
         assert_eq!(5, infer_bit_width(b"00100\n11110\n"));
-        assert_eq!(12, infer_bit_width(b"101000111100\n000011111101\n011100000100\n"));
+        assert_eq!(
+            12,
+            infer_bit_width(b"101000111100\n000011111101\n011100000100\n")
+        );
     }
 
     #[test]
     fn matches_supplied_example() {
-        let sample_input = b"00100\n11110\n10110\n10111\n10101\n01111\n00111\n11100\n10000\n11001\n00010\n01010\n";
+        let sample_input =
+            b"00100\n11110\n10110\n10111\n10101\n01111\n00111\n11100\n10000\n11001\n00010\n01010\n";
         let line_width = 5;
         let position_counts = count_lines_of_bits(sample_input.lines(), line_width);
 

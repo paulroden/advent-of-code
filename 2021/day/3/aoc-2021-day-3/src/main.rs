@@ -2,27 +2,102 @@ use std::path::Path;
 
 fn main() {
     let input_file_path = Path::new("../input");
-    let lines = input::file_by_line(input_file_path).unwrap();
-    let line_width = 12;
+    let file_by_lines = input::read_lines(input_file_path, |line| Ok(line.to_string()))
+        .expect("could not read input file");
 
-    let position_counts = count_lines_of_bits(lines, line_width);
+    let bit_awway =
+        BitArray::from_lines(&file_by_lines).expect("Could not parse text lines to bit array.");
 
-    let base_10 = bit_vec_to_unsigned_int(&common_bits(&position_counts));
-    let mask = 2_usize.pow(line_width.try_into().unwrap()) - 1;
+    let commons = (0..bit_awway.width)
+        .map(|i| commonest_bit(&bit_awway.column(i)))
+        .collect::<Vec<_>>();
+
+    let base_10 = bits_to_usize(&commons);
     let gamma_rate = base_10;
-    let epsilon_rate = !gamma_rate & mask;
+    let epsilon_rate = !gamma_rate & bit_mask(bit_awway.width);
 
-    println!("{:b}, {}", gamma_rate, gamma_rate);
-    println!("0{:b}, {}", epsilon_rate, epsilon_rate);
+    println!("{:#016b}, {}", gamma_rate, gamma_rate);
+    println!("{:#016b}, {}", epsilon_rate, epsilon_rate);
     println!("{}", gamma_rate * epsilon_rate);
-
-    println!("-------- Part 2 -------");
-
-    let lines = input::file_by_line(input_file_path).unwrap();
-    let (zeroes, ones) = split_lines_by_first_bit(lines);
-
-    println!("{:?}", zeroes);
+    assert_eq!(gamma_rate * epsilon_rate, 2261546);
 }
+
+
+#[derive(Debug)]
+struct BitArray {
+    width: usize,
+    length: usize,
+    bits: Vec<bool>,
+}
+
+impl BitArray {
+    fn from_lines(lines: &[String]) -> Result<Self, String> {
+        let width = lines.first().unwrap().chars().count();
+        let length = lines.len();
+
+        let parsed_bits: Result<Vec<bool>, _> = lines
+            .iter()
+            .flat_map(|line| line.chars().map(parse_bit))
+            .collect();
+        match parsed_bits {
+            Ok(bits) => Ok(Self {
+                width,
+                length,
+                bits,
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn row(&self, i: usize) -> &[bool] {
+        let from = i * self.width;
+        let to = (i + 1) * self.width;
+        &self.bits[from..to]
+    }
+
+    fn column(&self, i: usize) -> Vec<bool> {
+        self.bits
+            .iter()
+            .skip(i)
+            .step_by(self.width)
+            .copied()
+            .collect()
+    }
+}
+
+pub fn parse_bit(ch: char) -> Result<bool, String> {
+    match ch {
+        '0' => Ok(false),
+        '1' => Ok(true),
+        other => Err(format!("could not parse {}", other)),
+    }
+}
+
+pub fn count_ones(bits: &[bool]) -> usize {
+    bits.iter().filter(|b| **b).count()
+}
+
+pub fn count_zeros(bits: &[bool]) -> usize {
+    bits.len() - count_ones(bits)
+}
+
+pub fn commonest_bit(bits: &[bool]) -> bool {
+    count_ones(bits) >= (bits.len() / 2)
+}
+
+pub fn bits_to_usize(bits: &[bool]) -> usize {
+    bits.iter()
+        .rev()
+        .enumerate()
+        .fold(0, |n, (i,b)|
+            n | (*b as usize) << i
+        )
+}
+
+pub fn bit_mask(n_bits: usize) -> usize {
+    (0..n_bits).fold(1, |m, _| m << 0b1) - 1
+}
+
 
 pub fn count_lines_of_bits(
     lines: impl Iterator<Item = std::io::Result<String>>,
@@ -173,5 +248,12 @@ mod input {
             }
         }
         Ok(lines)
+    }
+
+    pub fn read_as_string(path: &Path) -> Result<String, io::Error> {
+        let mut file = File::open(path)?;
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer)?;
+        Ok(buffer)
     }
 }

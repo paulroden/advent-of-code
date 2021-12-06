@@ -9,21 +9,60 @@ fn main() {
         BitArray::from_lines(&file_by_lines).expect("Could not parse text lines to bit array.");
 
     let commons = (0..bit_awway.width)
-        .map(|i| commonest_bit(&bit_awway.column(i)))
+        .map(|i| commonest_bit(&bit_awway.column(i), true))
         .collect::<Vec<_>>();
 
     let base_10 = bits_to_usize(&commons);
     let gamma_rate = base_10;
     let epsilon_rate = !gamma_rate & bit_mask(bit_awway.width);
 
-    println!("{:#016b}, {}", gamma_rate, gamma_rate);
-    println!("{:#016b}, {}", epsilon_rate, epsilon_rate);
-    println!("{}", gamma_rate * epsilon_rate);
+
+    println!("ɣ: {:#016b}, {}", gamma_rate, gamma_rate);
+    println!("ε: {:#016b}, {}", epsilon_rate, epsilon_rate);
+    println!("ɣ × ε => {}\n", gamma_rate * epsilon_rate);
     assert_eq!(gamma_rate * epsilon_rate, 2261546);
+
+    // O2 Generator
+    // let sample_data = "00100\n11110\n10110\n10111\n10101\n01111\n00111\n11100\n10000\n11001\n00010\n01010\n";
+    // let sample_data_lines = sample_data.lines().map(|line| line.to_string()).collect::<Vec<String>>();
+    // let sample_bit_array = BitArray::from_lines(&sample_data_lines).unwrap();
+
+    let mut temp_bits = bit_awway.clone();
+    for p in 0..bit_awway.width {
+        let desired_bit = commonest_bit(&temp_bits.column(p), true);
+        temp_bits = temp_bits.filter(p, desired_bit);
+        if temp_bits.length == 1 {
+            for i in 0..temp_bits.length {
+                println!(
+                    "Oxygen: {} == {:#016b}",
+                    bits_to_usize(temp_bits.row(i)),
+                    bits_to_usize(temp_bits.row(i))
+                );
+            }
+        }
+    }
+    // drop(temp_bits);
+
+    // CO2 Scrubber
+    let mut temp_bits = bit_awway.clone();
+    for p in 0..bit_awway.width {
+        let desired_bit = !commonest_bit(&temp_bits.column(p), true);
+        temp_bits = temp_bits.filter(p, desired_bit);
+        if temp_bits.length == 1 {
+            for i in 0..temp_bits.length {
+                println!(
+                    "Oxygen: {} == {:#016b}",
+                    bits_to_usize(temp_bits.row(i)),
+                    bits_to_usize(temp_bits.row(i))
+                );
+            }
+        }
+    }
+
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct BitArray {
     width: usize,
     length: usize,
@@ -63,6 +102,21 @@ impl BitArray {
             .copied()
             .collect()
     }
+
+    fn filter(&self, bit_index: usize, value: bool) -> Self {
+        let filtered = (0..self.length)
+            .map(|i| self.row(i))
+            .filter(|r| r[bit_index] == value)
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>();
+        
+        Self {
+            width: self.width,
+            length: filtered.len() / self.width,
+            bits: filtered,
+        }
+    }
 }
 
 pub fn parse_bit(ch: char) -> Result<bool, String> {
@@ -81,8 +135,13 @@ pub fn count_zeros(bits: &[bool]) -> usize {
     bits.len() - count_ones(bits)
 }
 
-pub fn commonest_bit(bits: &[bool]) -> bool {
-    count_ones(bits) >= (bits.len() / 2)
+pub fn commonest_bit(bits: &[bool], if_equal: bool) -> bool {
+    let most_common = (2 * count_ones(bits)).cmp(&bits.len());
+    match most_common {
+        std::cmp::Ordering::Greater => true, // more ones than zeroes
+        std::cmp::Ordering::Less => false, // fewer ones than zeroes
+        std::cmp::Ordering::Equal => if_equal,
+    }
 }
 
 pub fn bits_to_usize(bits: &[bool]) -> usize {
@@ -97,6 +156,9 @@ pub fn bits_to_usize(bits: &[bool]) -> usize {
 pub fn bit_mask(n_bits: usize) -> usize {
     (0..n_bits).fold(1, |m, _| m << 0b1) - 1
 }
+
+
+//--------------
 
 
 pub fn count_lines_of_bits(

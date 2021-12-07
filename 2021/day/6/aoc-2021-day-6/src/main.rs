@@ -1,7 +1,7 @@
 use std::fmt;
 use std::num::ParseIntError;
-use std::str::FromStr;
 use std::path::Path;
+use std::str::FromStr;
 
 fn main() {
     let input_file_path = Path::new("../input");
@@ -14,62 +14,73 @@ fn main() {
     println!("{:?}", input);
 
     let initial_state = School::from_str(&input).expect("could not parse input data");
-    let final_state = initial_state.step_by(80);
+    // let part_1_state = initial_state.step_by(80);
+    println!("After 80 days: {}", initial_state.clone().step_by(80).count());
+    // let part_2_state = &initial_state.step_by(256);
+    println!("After 256 days: {}", initial_state.clone().step_by(256).count());
 
-    println!("After 80 days: {} fish:", final_state.count());
+    // // Part 1
+    // let final_state = initial_state.step_by(80);
+    // println!("After 80 days: {} fish.", final_state.count());
 
-    println!("After 256 days: {} fish:", initial_state.step_by(256).count());
-    // println!("{}", final_state);
+    // // Part 2
+    // let final_state_2 = initial_state.step_by(256);
+    // println!("After 256 days: {} fish.", final_state_2.count());
+    // // println!("{}", final_state);
 }
-
 
 #[derive(Debug, PartialEq, Clone)]
 struct School {
-    fish: Vec<u32>,
+    fish: [u64; 9],
 }
 
 impl fmt::Display for School {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.fish)
+        write!(f, "{:?}", self.fish.iter().enumerate().collect::<Vec<_>>())
     }
 }
 
 impl FromStr for School {
     type Err = ParseIntError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let fish: Result<Vec<_>, Self::Err> =
-            s.split(',').map(|ch| ch.parse()).collect();
-        match fish {
-            Ok(fish) => Ok(Self { fish }),
-            Err(e) => Err(e),
+    fn from_str(s: &str) -> Result<Self, ParseIntError> {
+        let all_fish: Vec<u32> = s
+            .split(',')
+            .map(|ch| ch.parse().expect("Could not parse to int."))
+            .collect::<Vec<_>>();
+
+        let mut fish = [0; 9];
+
+        for time in all_fish {
+            fish[time as usize + 1] += 1;
         }
+        Ok(Self { fish })
     }
 }
 
 impl School {
     fn next_day(&self) -> Self {
-        let birthing_count = self.fish.iter().filter(|a| **a == 0).count();
-        let baby_fish = vec![8; birthing_count];
+        // let mut current = self.fish.clone();
+        let fish = [
+            self.fish[1],                   // 0
+            self.fish[2],                   // 1
+            self.fish[3],                   // 2
+            self.fish[4],                   // 3
+            self.fish[5],                   // 4
+            self.fish[6],                   // 5
+            self.fish[7] + self.fish[0],    // 6
+            self.fish[8],                   // 7
+            self.fish[0],                   // 8
+        ];
+        Self { fish }
+  }
 
-        let current_fish = self
-            .fish
-            .iter()
-            .map(|a| match a {
-                0 => 6,
-                _ => a - 1,
-            })
-            .collect::<Vec<_>>();
-        let next_school = [&current_fish[..], &baby_fish].concat();
-        Self { fish: next_school }
+    fn step_by(self, days: usize) -> Self {
+        (0..=days).fold(self, |school, _| school.next_day())
     }
 
-    fn step_by(&self, days: usize) -> Self {
-        (0..days).fold(self.clone(), |school, _| school.next_day())
-    }
-
-    fn count(&self) -> usize {
-        self.fish.len()
+    fn count(&self) -> u64 {
+        self.fish.iter().sum()
     }
 }
 
@@ -79,10 +90,7 @@ mod tests {
     fn single_fish() {
         let school = School::from_str("4").unwrap();
 
-        assert_eq!(
-            School::from_str("6,8").unwrap(),
-            school.step_by(5)
-        );
+        assert_eq!(School::from_str("6,8").unwrap(), school.step_by(5));
     }
 
     #[test]
@@ -90,13 +98,17 @@ mod tests {
         let input = "3,4,3,1,2".to_string();
         let initial_state = School::from_str(&input).unwrap();
 
+        let mut step = initial_state.clone();
+        for i in 0..18 {
+            step = step.step_by(1);
+            println!("{}: {}", i, step);
+        }
+
         let final_state = initial_state.step_by(18);
 
         assert_eq!(
-            School::from_str(
-                "6,0,6,4,5,6,0,1,1,2,6,0,1,1,1,2,2,3,3,4,6,7,8,8,8,8"
-            ).unwrap(),
-            final_state
+            5934,
+            final_state.count()
         );
         // println!("{}", final_state);
     }

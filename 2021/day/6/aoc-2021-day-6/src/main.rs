@@ -1,62 +1,36 @@
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
+use std::path::Path;
 
 fn main() {
-    println!("Hello, world!");
+    let input_file_path = Path::new("../input");
+    let input = input::read_as_string(input_file_path)
+        .expect("could not read input file")
+        .strip_suffix('\n')
+        .unwrap()
+        .to_string();
+
+    println!("{:?}", input);
+
+    let initial_state = School::from_str(&input).expect("could not parse input data");
+    let final_state = initial_state.step_by(80);
+
+    println!("After 80 days: {} fish:", final_state.count());
+
+    println!("After 256 days: {} fish:", initial_state.step_by(256).count());
+    // println!("{}", final_state);
 }
 
-#[derive(Debug, Clone)]
-struct LanternFish {
-    time: u32,
-}
 
-impl fmt::Display for LanternFish {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.time)
-    }
-}
-
-impl FromStr for LanternFish {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let time = s.parse::<u32>()?;
-        Ok(Self { time })
-    }
-}
-
-impl LanternFish {
-    fn new(time: u32) -> Self {
-        Self { time }
-    }
-
-    fn next_day(&self) -> (Option<Self>, Option<Self>) {
-        match self.time {
-            0 => (Some(Self { time: 6 }), Some(Self { time: 8 })),
-            _ => (
-                Some(Self {
-                    time: self.time - 1,
-                }),
-                None,
-            ),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 struct School {
-    fish: Vec<LanternFish>,
+    fish: Vec<u32>,
 }
 
 impl fmt::Display for School {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let fish_times = self
-            .fish
-            .iter()
-            .map(|a| a.time)
-            .collect::<Vec<_>>();
-        write!(f, "{:?}", fish_times)
+        write!(f, "{:?}", self.fish)
     }
 }
 
@@ -65,7 +39,7 @@ impl FromStr for School {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let fish: Result<Vec<_>, Self::Err> =
-            s.split(',').map(|ch| LanternFish::from_str(ch)).collect();
+            s.split(',').map(|ch| ch.parse()).collect();
         match fish {
             Ok(fish) => Ok(Self { fish }),
             Err(e) => Err(e),
@@ -74,25 +48,24 @@ impl FromStr for School {
 }
 
 impl School {
-    fn from_fish(fish_times: &[u32]) -> Self {
-        let fish = fish_times
-            .iter()
-            .map(|i| LanternFish::new(*i))
-            .collect::<Vec<_>>();
-        Self { fish }
-    }
-
     fn next_day(&self) -> Self {
-        let next_school = self
+        let birthing_count = self.fish.iter().filter(|a| **a == 0).count();
+        let baby_fish = vec![8; birthing_count];
+
+        let current_fish = self
             .fish
             .iter()
-            .flat_map(|a| match a.next_day() {
-                (Some(fish), Some(baby_fish)) => vec![fish, baby_fish],
-                (Some(fish), None) => vec![fish],
-                (None, _) => vec![],
+            .map(|a| match a {
+                0 => 6,
+                _ => a - 1,
             })
             .collect::<Vec<_>>();
+        let next_school = [&current_fish[..], &baby_fish].concat();
         Self { fish: next_school }
+    }
+
+    fn step_by(&self, days: usize) -> Self {
+        (0..days).fold(self.clone(), |school, _| school.next_day())
     }
 
     fn count(&self) -> usize {
@@ -106,12 +79,10 @@ mod tests {
     fn single_fish() {
         let school = School::from_str("4").unwrap();
 
-        let mut next_school = school;
-
-        for _ in 0..6 {
-            println!("{}", next_school);
-            next_school = next_school.next_day();
-        }
+        assert_eq!(
+            School::from_str("6,8").unwrap(),
+            school.step_by(5)
+        );
     }
 
     #[test]
@@ -119,12 +90,15 @@ mod tests {
         let input = "3,4,3,1,2".to_string();
         let initial_state = School::from_str(&input).unwrap();
 
-        let final_state = (0..18).fold(initial_state, |school, _| school.next_day());
-        // let mut next_school = initial_state;
+        let final_state = initial_state.step_by(18);
 
-        println!("{}", final_state);
-
-        for 0..18
+        assert_eq!(
+            School::from_str(
+                "6,0,6,4,5,6,0,1,1,2,6,0,1,1,1,2,2,3,3,4,6,7,8,8,8,8"
+            ).unwrap(),
+            final_state
+        );
+        // println!("{}", final_state);
     }
 }
 

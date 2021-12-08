@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::num::ParseIntError;
 use std::path::Path;
 
 fn main() {
@@ -71,14 +70,19 @@ mod tests {
         let positions = Positions::from_list(&example_input);
 
         let metric_part_1 = |x: i32, y: i32| ((x - y) as i32).abs();
-        assert_eq!(Some(37), positions.minimum_displacements(metric_part_1));
+        assert_eq!(
+            Some(37),
+            positions.minimum_displacements(metric_part_1)
+        );
 
         let metric_part_2 = |x: i32, y: i32| {
             let d = ((x - y) as i32).abs();
             (0..=d).sum()
         };
-        assert_eq!(Some(168), positions.minimum_displacements(metric_part_2));
-
+        assert_eq!(
+            Some(168),
+            positions.minimum_displacements(metric_part_2)
+        );
     }
 }
 

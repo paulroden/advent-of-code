@@ -13,7 +13,7 @@ fn main() {
 
     let metric_part_2 = |x: i32, y: i32| {
         let d = ((x - y) as i32).abs();
-        (0..=d).sum()
+        d * (d + 1) / 2
     };
     println!("{:?}", positions.minimum_displacements(metric_part_2));
 }

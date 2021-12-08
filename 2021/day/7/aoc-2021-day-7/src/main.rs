@@ -9,8 +9,14 @@ fn main() {
 
     let positions = Positions::from_list(&input[0]);
 
-    let metric = |x: i32, y: i32| ((x - y) as i32).abs();
-    println!("{:?}", positions.minimum_displacements(metric));
+    let metric_part_1 = |x: i32, y: i32| ((x - y) as i32).abs();
+    println!("{:?}", positions.minimum_displacements(metric_part_1));
+
+    let metric_part_2 = |x: i32, y: i32| {
+        let d = ((x - y) as i32).abs();
+        (0..=d).sum()
+    };
+    println!("{:?}", positions.minimum_displacements(metric_part_2));
 }
 
 #[derive(Debug)]
@@ -59,21 +65,20 @@ impl Positions {
 mod tests {
     #[test]
     fn example() {
-        let xs = vec![0, 1, 2, 4, 7, 14, 16];
-        let ws = vec![1, 2, 3, 1, 1, 1, 1];
-        let min1: Option<i32> = match (xs.iter().min(), xs.iter().max()) {
-            (Some(min_x), Some(max_x)) => (*min_x..=*max_x)
-                .map(|y| {
-                    xs.iter()
-                        .zip(ws.iter())
-                        .map(|(x, w)| w * ((x - y) as i32).abs())
-                        .sum()
-                })
-                .min(),
-            (_, _) => None,
-        };
+        use crate::Positions;
 
-        assert_eq!(Some(37), min1);
+        let example_input = vec![16,1,2,0,4,2,7,1,2,14];
+        let positions = Positions::from_list(&example_input);
+
+        let metric_part_1 = |x: i32, y: i32| ((x - y) as i32).abs();
+        assert_eq!(Some(37), positions.minimum_displacements(metric_part_1));
+
+        let metric_part_2 = |x: i32, y: i32| {
+            let d = ((x - y) as i32).abs();
+            (0..=d).sum()
+        };
+        assert_eq!(Some(168), positions.minimum_displacements(metric_part_2));
+
     }
 }
 

@@ -12,12 +12,14 @@ fn main() {
 
     let positions = Positions::from_list(&input[0]);
 
-    println!("{:?}", positions.total_elements());
+    println!("{:?}", positions.unique());
+    println!("{:?}", positions.minimum_displacements());
+
 }
 
 #[derive(Debug)]
 struct Positions {
-    counts: HashMap<i32, u32>
+    counts: HashMap<i32, i32>
 }
 
 impl Positions {
@@ -29,8 +31,51 @@ impl Positions {
         Self { counts }
     }
 
-    fn total_elements(&self) -> u32 {
+    fn unique(&self) -> Vec<i32> {
+        self.counts.keys().copied().collect()
+    }
+
+    fn weights(&self) -> Vec<i32> {
+        self.counts.values().copied().collect()
+    }
+
+    fn total_elements(&self) -> i32 {
         self.counts.values().sum()
+    }
+
+    fn minimum_displacements(&self) -> Option<i32> {
+        let xs = self.unique();
+        let ws = self.weights();
+        match (xs.iter().min(), xs.iter().max()) {
+            (Some(min_x), Some(max_x)) => {
+                (*min_x ..= *max_x).map(|y| 
+                    xs.iter().zip(ws.iter()).map(|(x, w)| w * ((x - y) as i32).abs() ).sum()
+                ).min()
+    
+            },
+            (_, _) => None
+        }
+    }
+}
+
+
+mod tests {
+    #[test]
+    fn example() {
+        let xs = vec![0, 1, 2, 4, 7, 14, 16];
+        let ws = vec![1, 2, 3, 1, 1,  1,  1];
+    
+        let min1: Option<i32> = match (xs.iter().min(), xs.iter().max()) {
+            (Some(min_x), Some(max_x)) => {
+                (*min_x ..= *max_x).map(|y| 
+                    xs.iter().zip(ws.iter()).map(|(x, w)| w * ((x - y) as i32).abs() ).sum()
+                ).min()
+    
+            },
+            (_, _) => None
+        };
+
+        assert_eq!(Some(37), min1);
     }
 }
 

@@ -11,22 +11,10 @@ fn main() {
         .unwrap()
         .to_string();
 
-    println!("{:?}", input);
-
     let initial_state = School::from_str(&input).expect("could not parse input data");
-    // let part_1_state = initial_state.step_by(80);
     println!("After 80 days: {}", initial_state.clone().step_by(80).count());
-    // let part_2_state = &initial_state.step_by(256);
     println!("After 256 days: {}", initial_state.clone().step_by(256).count());
 
-    // // Part 1
-    // let final_state = initial_state.step_by(80);
-    // println!("After 80 days: {} fish.", final_state.count());
-
-    // // Part 2
-    // let final_state_2 = initial_state.step_by(256);
-    // println!("After 256 days: {} fish.", final_state_2.count());
-    // // println!("{}", final_state);
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -60,7 +48,6 @@ impl FromStr for School {
 
 impl School {
     fn next_day(&self) -> Self {
-        // let mut current = self.fish.clone();
         let fish = [
             self.fish[1],                   // 0
             self.fish[2],                   // 1
@@ -84,35 +71,6 @@ impl School {
     }
 }
 
-mod tests {
-    use crate::*;
-    #[test]
-    fn single_fish() {
-        let school = School::from_str("4").unwrap();
-
-        assert_eq!(School::from_str("6,8").unwrap(), school.step_by(5));
-    }
-
-    #[test]
-    fn example() {
-        let input = "3,4,3,1,2".to_string();
-        let initial_state = School::from_str(&input).unwrap();
-
-        let mut step = initial_state.clone();
-        for i in 0..18 {
-            step = step.step_by(1);
-            println!("{}: {}", i, step);
-        }
-
-        let final_state = initial_state.step_by(18);
-
-        assert_eq!(
-            5934,
-            final_state.count()
-        );
-        // println!("{}", final_state);
-    }
-}
 
 #[allow(dead_code)]
 mod input {

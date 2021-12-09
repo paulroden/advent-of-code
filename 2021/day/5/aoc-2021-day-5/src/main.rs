@@ -45,6 +45,15 @@ impl LineVector {
         self.start[0] != self.end[0] && self.start[1] != self.end[1]
     }
 
+    fn has_unit_gradient(&self) -> bool {
+        match self.is_diagonal() {
+            false => false,
+            true =>  {
+                let gradient = (self.end[0] - self.start[0]) / (self.end[1] - self.start[1]);
+                gradient.abs() == 1
+            },
+        }
+    }
     // returns a version of the co-ordinate pair where the `start` is
     // the 'smaller' point and `end` is the 'larger' one
     // such that (x1 <= x2), (y1 <= y2)
@@ -59,6 +68,13 @@ impl LineVector {
         }
     }
 
+    
+
+    // fn gradient(&self, from: usize, to: usize) -> [i32; 2] {
+    //     let d_from = self.end[from] - self.start[from];
+    //     let d_to = self.end[to] - self.end[to];
+    //     d_from / d_to
+    // }
 }
 
 #[derive(Debug)]
@@ -165,6 +181,21 @@ mod tests {
         
         assert_eq!(non_diagonals.len(), 6);
         assert_eq!(grid.count_points_above(2), 5);
+    }
+
+    #[test]
+    fn example_part_2() {
+        let sample_lines = "0,9 -> 5,9\n8,0 -> 0,8\n9,4 -> 3,4\n2,2 -> 2,1\n7,0 -> 7,4\n6,4 -> 2,0\n0,9 -> 2,9\n3,4 -> 1,4\n0,0 -> 8,8\n5,5 -> 8,2";
+        let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
+
+        let valid_lines = parsed_lines.filter(|line|
+            !line.is_diagonal() || line.has_unit_gradient()
+        )
+        .collect::<Vec<_>>();
+        let grid = SparseGrid::from_lines(&valid_lines);
+        
+        assert_eq!(valid_lines.len(), 10);
+        assert_eq!(grid.count_points_above(2), 12);
     }
  }
 

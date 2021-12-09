@@ -68,13 +68,24 @@ impl LineVector {
         }
     }
 
-    
-
-    // fn gradient(&self, from: usize, to: usize) -> [i32; 2] {
-    //     let d_from = self.end[from] - self.start[from];
-    //     let d_to = self.end[to] - self.end[to];
-    //     d_from / d_to
-    // }
+    fn gradient_0(&self) -> i32 {
+        let d0 = self.end[0] - self.start[0];
+        let d1 = self.end[1] - self.start[1];
+        match d0 {
+            0 => 0,
+            _ => d1 / d0
+        }
+    }
+    fn gradient(&self) -> [[i32; 2]; 2] {
+        let d0 = self.end[0] - self.start[0];
+        let d1 = self.end[1] - self.start[1];
+        match (d0, d1) {
+            (0, 0) => [[0,0], [0, 0]],
+            (0, _) => [[0, d0 / d1], [0, 1]],
+            (_, 0) => [[1, 0], [d1 / d0, 0]],
+            _ => [[1, d0 / d1], [d1 / d0, 1]]
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -113,8 +124,11 @@ impl SparseGrid {
     fn from_lines(lines: &[LineVector]) -> Self {
         let points = lines.iter().fold(HashMap::new(), | mut map, line | {
             let line = line.ordered();
-            for x in line.start[0] ..= line.end[0] {
-                for y in line.start[1] ..= line.end[1] {
+            let grad = line.gradient();
+            for i in 0..=(line.end[0] - line.start[0])  {
+                for j in 0..=(line.end[1] - line.start[1]) {
+                    let x = (i * grad[0][0]) + (j * grad[0][1]) + line.start[0];
+                    let y = (i * grad[1][0]) + (j * grad[1][1]) + line.start[1];
                     *map.entry((x, y)).or_insert(0) += 1;
                 }
             }
@@ -127,6 +141,35 @@ impl SparseGrid {
         self.points.values()
         .filter(|v| **v >= x)
         .count() 
+    }
+
+    fn bounds(&self) -> [(i32, i32); 2] {
+        let min_bound = (
+            self.points.keys().map(|(x, _)| *x).min().unwrap(),
+            self.points.keys().map(|(_, y)| *y).min().unwrap(),
+        );
+        let max_bound = (
+            self.points.keys().map(|(x, _)| *x).max().unwrap(),
+            self.points.keys().map(|(_, y)| *y).max().unwrap(),
+        );
+        [min_bound, max_bound]
+    }
+
+    fn to_dense(&self) -> Vec<Vec<i32>> {
+        let bounds = self.bounds();
+        let mut dense_grid: Vec<Vec<i32>> =
+            (bounds[0].0 ..= bounds[1].1).map(|_|
+                (bounds[0].0 ..= bounds[1].0)
+                .map(|_| 0)
+                .collect::<Vec<_>>()
+            )
+        .collect();
+
+        self.points.iter().for_each(|((j,i), v)|
+            dense_grid[*i as usize][*j as usize] = *v
+        );
+
+        dense_grid
     }
 }
 
@@ -172,6 +215,17 @@ mod tests {
     }
 
     #[test]
+    fn gradients() {
+        let flat_0 = LineVector::new((2,2), (2,5));
+        let flat_1 = LineVector::new((2,2), (5,2));
+        let diag_01 = LineVector::new((2,2), (5,5));
+
+        assert_eq!([[0, 0], [0, 1]], flat_0.gradient());
+        assert_eq!([[1, 0], [0, 0]], flat_1.gradient());
+        assert_eq!([[1, 1], [1, 1]], diag_01.gradient());
+    }
+
+    #[test]
     fn example_part_1() {
         let sample_lines = "0,9 -> 5,9\n8,0 -> 0,8\n9,4 -> 3,4\n2,2 -> 2,1\n7,0 -> 7,4\n6,4 -> 2,0\n0,9 -> 2,9\n3,4 -> 1,4\n0,0 -> 8,8\n5,5 -> 8,2";
         let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
@@ -179,8 +233,13 @@ mod tests {
         let non_diagonals = parsed_lines.filter(|line| !line.is_diagonal()).collect::<Vec<_>>();
         let grid = SparseGrid::from_lines(&non_diagonals);
         
+        // assert_eq!(1,2);
+        for row in &grid.to_dense() {
+            println!("{:?}", row);
+        }
+
         assert_eq!(non_diagonals.len(), 6);
-        assert_eq!(grid.count_points_above(2), 5);
+        assert_eq!(grid.count_points_above(2), 5);   
     }
 
     #[test]
@@ -194,6 +253,8 @@ mod tests {
         .collect::<Vec<_>>();
         let grid = SparseGrid::from_lines(&valid_lines);
         
+        println!("{:?}", grid);
+
         assert_eq!(valid_lines.len(), 10);
         assert_eq!(grid.count_points_above(2), 12);
     }

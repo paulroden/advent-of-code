@@ -51,7 +51,7 @@ impl LineVector {
     // such that (x1 <= x2), (y1 <= y2)
     fn ordered(&self) -> Self {
         if self.start < self.end {
-            self.clone()
+            *self
         } else {
             Self {
                 start: self.end,

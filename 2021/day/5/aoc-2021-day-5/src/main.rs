@@ -26,7 +26,7 @@ fn main() {
     // Part 2
     let non_diagonals = parsed_lines
         .iter()
-        .filter(|line| !line.is_diagonal() || line.is_equilateral() )
+        .filter(|line| !line.is_diagonal() || line.is_equilateral())
         .copied()
         .collect::<Vec<_>>();
     let grid = SparseGrid::from_lines(&non_diagonals);
@@ -75,6 +75,13 @@ impl LineVector {
             .abs()
             .max((self.end[1] - self.start[1]).abs())
             + 1
+    }
+
+    fn points(&self) -> Vec<[i32; 2]> {
+        let grad = self.gradient();
+        (0..self.length())
+            .map(|k| [k * grad[0] + self.start[0], k * grad[1] + self.start[1]])
+            .collect()
     }
 }
 
@@ -213,16 +220,8 @@ mod tests {
 
     #[test]
     fn trace_points() {
-        let line = LineVector::new((2, 2), (5, 5));
-
-        let grad = line.gradient();
-        (0..=line.length()).for_each(|k| {
-            let x = k * grad[0] + line.start[0];
-            let y = k * grad[1] + line.start[1];
-            println!("{:?}", (x, y));
-        });
-
-        println!("{:?}", grad);
+        let points = LineVector::new((3, 3), (5, 5)).points();
+        assert_eq!(vec![[3, 3], [4, 4], [5, 5]], points);
     }
 
     #[test]

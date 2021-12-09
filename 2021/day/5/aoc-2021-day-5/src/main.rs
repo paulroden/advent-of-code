@@ -1,7 +1,6 @@
 use regex::{self, Regex};
 use std::path::Path;
 use std::str::FromStr;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use lazy_static::lazy_static;
 
@@ -157,9 +156,7 @@ mod tests {
     }
 
     #[test]
-    fn example() {
-        use std::collections::HashMap;
-
+    fn example_part_1() {
         let sample_lines = "0,9 -> 5,9\n8,0 -> 0,8\n9,4 -> 3,4\n2,2 -> 2,1\n7,0 -> 7,4\n6,4 -> 2,0\n0,9 -> 2,9\n3,4 -> 1,4\n0,0 -> 8,8\n5,5 -> 8,2";
         let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
 

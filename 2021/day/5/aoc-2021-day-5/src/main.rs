@@ -119,12 +119,9 @@ struct SparseGrid {
 impl SparseGrid {
     fn from_lines(lines: &[LineVector]) -> Self {
         let points = lines.iter().fold(HashMap::new(), |mut map, line| {
-            let grad = line.gradient();
-            (0..line.length()).for_each(|k| {
-                let point = (k * grad[0] + line.start[0], k * grad[1] + line.start[1]);
-                *map.entry(point).or_insert(0) += 1;
+            line.points().iter().for_each(| &[x, y] | {
+                *map.entry((x, y)).or_insert(0) += 1;
             });
-
             map
         });
         Self { points }

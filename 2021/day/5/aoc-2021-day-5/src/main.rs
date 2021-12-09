@@ -5,14 +5,17 @@ use lazy_static::lazy_static;
 
 fn main() {
     let input_file_path = Path::new("../input");
-    let file_by_lines = input::read_lines(
+    let parsed_lines = input::read_lines(
         input_file_path,
         |line| Ok(LineVector::from_str(line).unwrap())
     )
     .expect("could not read input file");
 
-    println!("{:?}", file_by_lines.len());
-
+    let non_diagonals = parsed_lines.iter()
+        .filter(|line| !line.is_diagonal())
+        .collect::<Vec<_>>();
+        
+    println!("{:?}", non_diagonals.len());
 }
 
 
@@ -29,6 +32,9 @@ struct LineVector {
 impl LineVector {
     fn new(start: (i32, i32), end: (i32, i32)) -> Self {
         Self { start, end }
+    }
+    fn is_diagonal(&self) -> bool {
+        self.start.0 != self.end.0 && self.start.1 != self.end.1
     }
 }
 
@@ -90,7 +96,13 @@ mod tests {
             (98,844)
         );
     }
-}
+
+    #[test]
+    fn recognised_diagonal_line() {
+        let line = LineVector::new( (973,82), (308,747) );
+        assert!(line.is_diagonal());
+    }
+ }
 
 
 #[allow(dead_code)]

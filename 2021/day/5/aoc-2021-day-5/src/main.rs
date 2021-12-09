@@ -120,13 +120,36 @@ impl FromStr for LineVector {
 
 #[derive(Debug)]
 struct SparseGrid {
-    points: HashMap<(i32, i32), u32>
+    points: HashMap<(i32, i32), i32>
 }
+
+impl SparseGrid {
+    fn from_lines(lines: &[LineVector]) -> Self {
+        let points = lines.iter().fold(HashMap::new(), | mut map, line | {
+            let line = line.ordered();
+            for x in line.start[0] ..= line.end[0] {
+                for y in line.start[1] ..= line.end[1] {
+                    *map.entry((x, y)).or_insert(0) += 1;
+                }
+            }
+            map
+        });
+        Self { points }
+    }
+
+    fn count_points_above(&self, x: i32) -> usize {
+        self.points.values()
+        .filter(|v| **v >= x)
+        .count() 
+    }
+}
+
+
 
 
 mod tests {
     use std::str::FromStr;
-    use crate::LineVector;
+    use crate::*;
 
     #[test]
     fn parses_string() {
@@ -170,34 +193,14 @@ mod tests {
         let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
 
         let non_diagonals = parsed_lines.filter(|line| !line.is_diagonal()).collect::<Vec<_>>();
-
-        let counts = non_diagonals.iter().fold(HashMap::new(), | mut map, line | {
-            let line = line.ordered();
-            for x in line.start[0] ..= line.end[0] {
-                for y in line.start[1] ..= line.end[1] {
-                    *map.entry((x, y)).or_insert(0) += 1;
-                }
-            }
-            map
-        });
-        
-        let count_above_2 = counts.values().filter(|v| **v >= 2).count();
-
-        // for point in &counts {
-        //     println!("{:?}", point);
-        // }
-        // println!("{:?}", counts.iter().filter(|(_,v)| **v >= 2).count());
+        let grid = SparseGrid::from_lines(&non_diagonals);
         
         assert_eq!(non_diagonals.len(), 6);
-        assert_eq!(count_above_2, 5);
+        assert_eq!(grid.count_points_above(2), 5);
 
     }
  }
 
-//  let counts = list.iter().fold(HashMap::new(), |mut map, &k| {
-//     *map.entry(k).or_insert(0) += 1;
-//     map
-// });
 
 #[allow(dead_code)]
 mod input {

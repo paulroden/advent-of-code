@@ -15,42 +15,13 @@ fn main() {
 
     let non_diagonals = parsed_lines.iter()
         .filter(|line| !line.is_diagonal())
+        .copied()
         .collect::<Vec<_>>();
         
-    println!("{:?}", non_diagonals);
+    let grid = SparseGrid::from_lines(&non_diagonals);
 
-    //---
-    let list = [
-        ([0,9], [5,9]),
-        ([9,4], [3,4]),
-        ([2,2], [2,1]),
-        ([7,0], [7,4]),
-        ([0,9], [2,9]),
-        ([3,4], [1,4]),
-    ];
+    println!("{}", grid.count_points_above(2));
 
-
-    let counts = list.iter().enumerate().fold(HashMap::new(), | mut map, (i, pair) | {
-        // ensure the co-ordinate pair is order from 'smaller' to 'larger'
-        // to allow generation of ranges from (x1, y1) to (x2, y2)
-        // such that (x1 <= x2), (y1 <= y2)
-        let pair = if pair.0 < pair.1 {
-            *pair
-        } else {
-            (pair.1, pair.0)
-        };
-        println!("{}: {:?}.....", i, pair);
-        for x in pair.0[0] ..= pair.1[0] {
-            println!("x: {}", x);
-            for y in pair.0[1] ..= pair.1[1] {
-                println!("y: {}", y);
-                println!("{}: {:?}", i, (x,y));
-                
-                *map.entry((x, y)).or_insert(0) += 1;
-            }
-        }
-        map
-    });
 }
 
 
@@ -58,7 +29,7 @@ fn parse_captures_to_i32(captures: &regex::Captures, i: usize) -> i32 {
     captures.get(i).unwrap().as_str().parse::<i32>().unwrap()
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct LineVector {
     start: [i32; 2],
     end: [i32; 2],
@@ -197,7 +168,6 @@ mod tests {
         
         assert_eq!(non_diagonals.len(), 6);
         assert_eq!(grid.count_points_above(2), 5);
-
     }
  }
 

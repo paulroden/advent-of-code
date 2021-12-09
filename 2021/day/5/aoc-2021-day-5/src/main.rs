@@ -1,6 +1,8 @@
 use regex::{self, Regex};
 use std::path::Path;
 use std::str::FromStr;
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use lazy_static::lazy_static;
 
 fn main() {
@@ -15,7 +17,40 @@ fn main() {
         .filter(|line| !line.is_diagonal())
         .collect::<Vec<_>>();
         
-    println!("{:?}", non_diagonals.len());
+    println!("{:?}", non_diagonals);
+
+    //---
+    let list = [
+        ([0,9], [5,9]),
+        ([9,4], [3,4]),
+        ([2,2], [2,1]),
+        ([7,0], [7,4]),
+        ([0,9], [2,9]),
+        ([3,4], [1,4]),
+    ];
+
+
+    let counts = list.iter().enumerate().fold(HashMap::new(), | mut map, (i, pair) | {
+        // ensure the co-ordinate pair is order from 'smaller' to 'larger'
+        // to allow generation of ranges from (x1, y1) to (x2, y2)
+        // such that (x1 <= x2), (y1 <= y2)
+        let pair = if pair.0 < pair.1 {
+            *pair
+        } else {
+            (pair.1, pair.0)
+        };
+        println!("{}: {:?}.....", i, pair);
+        for x in pair.0[0] ..= pair.1[0] {
+            println!("x: {}", x);
+            for y in pair.0[1] ..= pair.1[1] {
+                println!("y: {}", y);
+                println!("{}: {:?}", i, (x,y));
+                
+                *map.entry((x, y)).or_insert(0) += 1;
+            }
+        }
+        map
+    });
 }
 
 
@@ -23,19 +58,37 @@ fn parse_captures_to_i32(captures: &regex::Captures, i: usize) -> i32 {
     captures.get(i).unwrap().as_str().parse::<i32>().unwrap()
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct LineVector {
-    start: (i32, i32),
-    end: (i32, i32),
+    start: [i32; 2],
+    end: [i32; 2],
 }
 
 impl LineVector {
     fn new(start: (i32, i32), end: (i32, i32)) -> Self {
+        let start = [start.0, start.1];
+        let end = [end.0, end.1];
         Self { start, end }
     }
+    
     fn is_diagonal(&self) -> bool {
-        self.start.0 != self.end.0 && self.start.1 != self.end.1
+        self.start[0] != self.end[0] && self.start[1] != self.end[1]
     }
+
+    // returns a version of the co-ordinate pair where the `start` is
+    // the 'smaller' point and `end` is the 'larger' one
+    // such that (x1 <= x2), (y1 <= y2)
+    fn ordered(&self) -> Self {
+        if self.start < self.end {
+            self.clone()
+        } else {
+            Self {
+                start: self.end,
+                end: self.start
+            }
+        }
+    }
+
 }
 
 #[derive(Debug)]
@@ -50,20 +103,26 @@ impl FromStr for LineVector {
                 Regex::new(r"^(\d+?),(\d+?) -> (\d+?),(\d+?)$").unwrap();
         }
         if let Some(captures) = PATTERN.captures(s) {
-            let start = (
+            let start = [
                 parse_captures_to_i32(&captures, 1),
                 parse_captures_to_i32(&captures, 2),
-            );
-            let end = (
+            ];
+            let end = [
                 parse_captures_to_i32(&captures, 3),
                 parse_captures_to_i32(&captures, 4),
-            );
+            ];
             Ok(Self { start, end })
         } else {
             Err(LineParseError)
         }
     }
 }
+
+#[derive(Debug)]
+struct SparseGrid {
+    points: HashMap<(i32, i32), u32>
+}
+
 
 mod tests {
     use std::str::FromStr;
@@ -89,11 +148,11 @@ mod tests {
         assert_eq!(parsed.len(), 3);
         assert_eq!(
             parsed.first().unwrap().start,
-            (565,190)
+            [565,190]
         );
         assert_eq!(
             parsed.last().unwrap().end,
-            (98,844)
+            [98,844]
         );
     }
 
@@ -102,8 +161,43 @@ mod tests {
         let line = LineVector::new( (973,82), (308,747) );
         assert!(line.is_diagonal());
     }
+
+    #[test]
+    fn example() {
+        use std::collections::HashMap;
+
+        let sample_lines = "0,9 -> 5,9\n8,0 -> 0,8\n9,4 -> 3,4\n2,2 -> 2,1\n7,0 -> 7,4\n6,4 -> 2,0\n0,9 -> 2,9\n3,4 -> 1,4\n0,0 -> 8,8\n5,5 -> 8,2";
+        let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
+
+        let non_diagonals = parsed_lines.filter(|line| !line.is_diagonal()).collect::<Vec<_>>();
+
+        let counts = non_diagonals.iter().fold(HashMap::new(), | mut map, line | {
+            let line = line.ordered();
+            for x in line.start[0] ..= line.end[0] {
+                for y in line.start[1] ..= line.end[1] {
+                    *map.entry((x, y)).or_insert(0) += 1;
+                }
+            }
+            map
+        });
+        
+        let count_above_2 = counts.values().filter(|v| **v >= 2).count();
+
+        // for point in &counts {
+        //     println!("{:?}", point);
+        // }
+        // println!("{:?}", counts.iter().filter(|(_,v)| **v >= 2).count());
+        
+        assert_eq!(non_diagonals.len(), 6);
+        assert_eq!(count_above_2, 5);
+
+    }
  }
 
+//  let counts = list.iter().fold(HashMap::new(), |mut map, &k| {
+//     *map.entry(k).or_insert(0) += 1;
+//     map
+// });
 
 #[allow(dead_code)]
 mod input {

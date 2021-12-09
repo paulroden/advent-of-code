@@ -2,6 +2,7 @@ use regex::{self, Regex};
 use std::path::Path;
 use std::str::FromStr;
 use std::collections::HashMap;
+use std::cmp::Ordering;
 use lazy_static::lazy_static;
 
 fn main() {
@@ -45,46 +46,26 @@ impl LineVector {
         self.start[0] != self.end[0] && self.start[1] != self.end[1]
     }
 
-    fn has_unit_gradient(&self) -> bool {
-        match self.is_diagonal() {
-            false => false,
-            true =>  {
-                let gradient = (self.end[0] - self.start[0]) / (self.end[1] - self.start[1]);
-                gradient.abs() == 1
-            },
-        }
-    }
-    // returns a version of the co-ordinate pair where the `start` is
-    // the 'smaller' point and `end` is the 'larger' one
-    // such that (x1 <= x2), (y1 <= y2)
-    fn ordered(&self) -> Self {
-        if self.start < self.end {
-            *self
-        } else {
-            Self {
-                start: self.end,
-                end: self.start
-            }
-        }
+    fn is_equilateral(&self) -> bool {
+        (self.end[0] - self.start[0]).abs() == (self.end[1] - self.start[1]).abs()
     }
 
-    fn gradient_0(&self) -> i32 {
-        let d0 = self.end[0] - self.start[0];
-        let d1 = self.end[1] - self.start[1];
-        match d0 {
-            0 => 0,
-            _ => d1 / d0
+    fn gradient(&self) -> [i32; 2] {
+        (0..2).map(|k| {
+            match self.end[k].cmp(&self.start[k]) {
+                Ordering::Equal => 0,
+                Ordering::Greater => 1,
+                Ordering::Less => -1,
+            }
         }
+        ).collect::<Vec<_>>().try_into().unwrap()
     }
-    fn gradient(&self) -> [[i32; 2]; 2] {
-        let d0 = self.end[0] - self.start[0];
-        let d1 = self.end[1] - self.start[1];
-        match (d0, d1) {
-            (0, 0) => [[0,0], [0, 0]],
-            (0, _) => [[0, d0 / d1], [0, 1]],
-            (_, 0) => [[1, 0], [d1 / d0, 0]],
-            _ => [[1, d0 / d1], [d1 / d0, 1]]
-        }
+
+    fn length(&self) -> i32 {
+        (self.end[0] - self.start[0]).abs()
+        .max(
+            (self.end[1] - self.start[1]).abs()
+        ) + 1
     }
 }
 
@@ -123,15 +104,15 @@ struct SparseGrid {
 impl SparseGrid {
     fn from_lines(lines: &[LineVector]) -> Self {
         let points = lines.iter().fold(HashMap::new(), | mut map, line | {
-            let line = line.ordered();
             let grad = line.gradient();
-            for i in 0..=(line.end[0] - line.start[0])  {
-                for j in 0..=(line.end[1] - line.start[1]) {
-                    let x = (i * grad[0][0]) + (j * grad[0][1]) + line.start[0];
-                    let y = (i * grad[1][0]) + (j * grad[1][1]) + line.start[1];
-                    *map.entry((x, y)).or_insert(0) += 1;
-                }
-            }
+            (0..line.length()).for_each(|k| {
+                let point = (
+                    k * grad[0] + line.start[0],
+                    k * grad[1] + line.start[1],
+                );
+                *map.entry(point).or_insert(0) += 1;
+            });
+
             map
         });
         Self { points }
@@ -168,8 +149,22 @@ impl SparseGrid {
         self.points.iter().for_each(|((j,i), v)|
             dense_grid[*i as usize][*j as usize] = *v
         );
-
         dense_grid
+    }
+
+    fn plot(&self) -> () {
+        let grid = self.to_dense();
+        for row in grid.iter() {
+            for e in row {
+                match e {
+                    0 => print!("█"),
+                    1..=9 => print!("{}", e),
+                    _ => print!("?"),
+                }
+            }
+            println!()
+        }
+        println!()
     }
 }
 
@@ -216,47 +211,86 @@ mod tests {
 
     #[test]
     fn gradients() {
-        let flat_0 = LineVector::new((2,2), (2,5));
-        let flat_1 = LineVector::new((2,2), (5,2));
+        let flat_0 = LineVector::new((2,2), (5,2));
+        let flat_1 = LineVector::new((2,2), (2,5));
         let diag_01 = LineVector::new((2,2), (5,5));
+        let diag_neg = LineVector::new((8,0), (0,8));
 
-        assert_eq!([[0, 0], [0, 1]], flat_0.gradient());
-        assert_eq!([[1, 0], [0, 0]], flat_1.gradient());
-        assert_eq!([[1, 1], [1, 1]], diag_01.gradient());
+        assert_eq!([1, 0], flat_0.gradient());
+        assert_eq!([0, 1], flat_1.gradient());
+        assert_eq!([1, 1], diag_01.gradient());
+        assert_eq!([-1, 1], diag_neg.gradient());
+    }
+
+    #[test]
+    fn trace_points() {
+        let line = LineVector::new((2,2), (5,5));
+
+        let grad = line.gradient();
+        (0..=line.length()).for_each(|k| {
+            let x = k * grad[0] + line.start[0];
+            let y = k * grad[1] + line.start[1];
+            println!("{:?}", (x,y));
+        });
+
+        println!("{:?}", grad);
+
     }
 
     #[test]
     fn example_part_1() {
-        let sample_lines = "0,9 -> 5,9\n8,0 -> 0,8\n9,4 -> 3,4\n2,2 -> 2,1\n7,0 -> 7,4\n6,4 -> 2,0\n0,9 -> 2,9\n3,4 -> 1,4\n0,0 -> 8,8\n5,5 -> 8,2";
-        let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
+        let lines = vec![
+            LineVector::new((0,9), (5,9)),
+            LineVector::new((8,0), (0,8)),
+            LineVector::new((9,4), (3,4)),
+            LineVector::new((2,2), (2,1)),
+            LineVector::new((7,0), (7,4)),
+            LineVector::new((6,4), (2,0)),
+            LineVector::new((0,9), (2,9)),
+            LineVector::new((3,4), (1,4)),
+            LineVector::new((0,0), (8,8)),
+            LineVector::new((5,5), (8,2)),
+        ];
 
-        let non_diagonals = parsed_lines.filter(|line| !line.is_diagonal()).collect::<Vec<_>>();
+        let non_diagonals = lines.iter().filter(
+            |line| !line.is_diagonal()
+        )
+        .copied()
+        .collect::<Vec<_>>();
+
         let grid = SparseGrid::from_lines(&non_diagonals);
         
-        // assert_eq!(1,2);
-        for row in &grid.to_dense() {
-            println!("{:?}", row);
-        }
-
         assert_eq!(non_diagonals.len(), 6);
-        assert_eq!(grid.count_points_above(2), 5);   
+        assert_eq!(grid.count_points_above(2), 5);
+        grid.plot();
     }
 
     #[test]
     fn example_part_2() {
-        let sample_lines = "0,9 -> 5,9\n8,0 -> 0,8\n9,4 -> 3,4\n2,2 -> 2,1\n7,0 -> 7,4\n6,4 -> 2,0\n0,9 -> 2,9\n3,4 -> 1,4\n0,0 -> 8,8\n5,5 -> 8,2";
-        let parsed_lines = sample_lines.lines().map(|line| LineVector::from_str(line).unwrap());
+        let lines = vec![
+            LineVector::new((0,9), (5,9)),
+            LineVector::new((8,0), (0,8)),
+            LineVector::new((9,4), (3,4)),
+            LineVector::new((2,2), (2,1)),
+            LineVector::new((7,0), (7,4)),
+            LineVector::new((6,4), (2,0)),
+            LineVector::new((0,9), (2,9)),
+            LineVector::new((3,4), (1,4)),
+            LineVector::new((0,0), (8,8)),
+            LineVector::new((5,5), (8,2)),
+        ];
 
-        let valid_lines = parsed_lines.filter(|line|
-            !line.is_diagonal() || line.has_unit_gradient()
+        let valid_lines = lines.iter().filter(|line|
+            !line.is_diagonal() || line.is_equilateral()
         )
+        .copied()
         .collect::<Vec<_>>();
+
         let grid = SparseGrid::from_lines(&valid_lines);
         
-        println!("{:?}", grid);
-
         assert_eq!(valid_lines.len(), 10);
         assert_eq!(grid.count_points_above(2), 12);
+        grid.plot();
     }
  }
 

@@ -136,69 +136,44 @@ mod tests {
             [8, 7, 6, 7, 8, 9, 6, 7, 8, 9],
             [9, 8, 9, 9, 9, 6, 5, 6, 7, 8],
         ]);
-        // let mask = s![0..4, 0..3];
-        // let view = heights.slice(mask);
+        
 
         for ((i,j), v) in heights.indexed_iter() {
             println!("({},{})", i, j);
             
-            let slice = s![
-                i.saturating_sub(1) .. (i + 2).min(heights.nrows()),
-                j.saturating_sub(1) .. (j + 2).min(heights.ncols()),
-            ];
             let mask = arr2(&[
                 [0, 1, 0],
                 [1, 1, 1],
                 [0, 1, 0],
             ]);
-            let m_i_min = match i.saturating_sub(1) {
-                0 => 1,
-                _ => 0,
-            };
-            let m_j_min = match j.saturating_sub(1) {
-                0 => 1,
-                _ => 0,
-            };
-            let m_i_max = match (i + 2) > heights.nrows() {
-                true => mask.nrows() - 1,
-                false => mask.nrows()
-            };
-            let m_j_max = match (j + 2) > heights.ncols() {
-                true => mask.ncols() - 1,
-                false => mask.ncols()
-            };
-            let m_slice = s![
-                m_i_min .. m_i_max,
-                m_j_min .. m_j_max
+
+            let k_r = mask.nrows() / 2;  // kernel width, or radius iff mask is square / symmetrical
+            let ghost_below_i = k_r.saturating_sub(i);  // effectively max(0, i - k_r)
+            let ghost_below_j = k_r.saturating_sub(j);  // "" for j
+            let ghost_above_i = (i + k_r + 1).saturating_sub(heights.nrows());  // effectively max(0, i + k_r - nrows)
+            let ghost_above_j = (j + k_r + 1).saturating_sub(heights.ncols());  // effectively max(0, i + k_r - ncols)
+
+            let slice = s![
+                i.saturating_sub(k_r + ghost_below_i) ..= (i + k_r - ghost_above_i),
+                j.saturating_sub(k_r + ghost_below_j) ..= (j + k_r - ghost_above_j),
             ];
-            //   |
-            // -------
-            // 
-            // println!("{:?}", slice);
-            // println!("{:?}", m_slice);
+
+            let mask_slice = s![
+                ghost_below_i .. (mask.nrows() - ghost_above_i),
+                ghost_below_j .. (mask.ncols() - ghost_above_j),
+            ];
 
             let view = heights.slice(slice);
-            let kernel = mask.slice(m_slice);
+            let kernel = mask.slice(mask_slice);
+            let values = &kernel * &view;
 
             let minimum = view.iter().min();
             match Some(v) == minimum {
-                true => println!("*{:?}* in:\n{:?}\n{:?}\n", v, view, kernel),
-                false => println!("not {:?} in:\n{:?}\n{:?}\n", v, view, kernel),
+                true => println!("*{:?}* in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, values),
+                false => (), // println!("not {:?} in:\n{:?}\n{:?}\n", v, view, kernel),
             }
         }
 
-        // for (i, chunk) in heights.exact_chunks((3, 3)).into_iter().enumerate() {
-        //     println!("i: {}\n {:?}", i, chunk);
-        // }
-
-        
-        // fn laplacian(v: &ArrayView2<f32>) -> Array2<f32> {
-        //     -4. * &v.slice(s![1..-1, 1..-1])
-        //     + v.slice(s![ ..-2, 1..-1])
-        //     + v.slice(s![1..-1,  ..-2])
-        //     + v.slice(s![1..-1, 2..  ])
-        //     + v.slice(s![2..  , 1..-1])
-        // }
     }
 }
 

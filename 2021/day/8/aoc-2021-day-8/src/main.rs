@@ -136,15 +136,15 @@ mod tests {
             [8, 7, 6, 7, 8, 9, 6, 7, 8, 9],
             [9, 8, 9, 9, 9, 6, 5, 6, 7, 8],
         ]);
-        
+
 
         for ((i,j), v) in heights.indexed_iter() {
             println!("({},{})", i, j);
             
             let mask = arr2(&[
-                [0, 1, 0],
-                [1, 1, 1],
-                [0, 1, 0],
+                [ 0, -1,  0],
+                [-1,  1, -1],
+                [ 0, -1,  0],
             ]);
 
             let k_r = mask.nrows() / 2;  // kernel width, or radius iff mask is square / symmetrical
@@ -165,12 +165,12 @@ mod tests {
 
             let view = heights.slice(slice);
             let kernel = mask.slice(mask_slice);
-            let values = &kernel * &view;
+            let gradient = (&kernel * &view).sum() as f64 / kernel.sum() as f64;
 
             let minimum = view.iter().min();
             match Some(v) == minimum {
-                true => println!("*{:?}* in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, values),
-                false => (), // println!("not {:?} in:\n{:?}\n{:?}\n", v, view, kernel),
+                true => println!("*{:?}* in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, gradient),
+                false => println!("not {:?} in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, gradient),
             }
         }
 

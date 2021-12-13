@@ -127,14 +127,15 @@ mod tests {
 
     #[test]
     fn laplace() {
+        use std::cmp::Ordering;
         use ndarray::prelude::*;
 
         let heights = arr2(&[
             [2, 1, 9, 9, 9, 4, 3, 2, 1, 0],
-            [3, 9, 8, 7, 8, 9, 4, 9, 2, 1],
-            [9, 8, 5, 6, 7, 8, 9, 8, 9, 2],
-            [8, 7, 6, 7, 8, 9, 6, 7, 8, 9],
-            [9, 8, 9, 9, 9, 6, 5, 6, 7, 8],
+            // [3, 9, 8, 7, 8, 9, 4, 9, 2, 1],
+            // [9, 8, 5, 6, 7, 8, 9, 8, 9, 2],
+            // [8, 7, 6, 7, 8, 9, 6, 7, 8, 9],
+            // [9, 8, 9, 9, 9, 6, 5, 6, 7, 8],
         ]);
 
 
@@ -142,20 +143,22 @@ mod tests {
             println!("({},{})", i, j);
             
             let mask = arr2(&[
-                [ 0, -1,  0],
-                [-1,  1, -1],
-                [ 0, -1,  0],
+                [-1.0, 1.0, -1.0]
+                // [ 0., -1.,  0.],
+                // [-1.,  4., -1.],
+                // [ 0., -1.,  0.],
             ]);
 
-            let k_r = mask.nrows() / 2;  // kernel width, or radius iff mask is square / symmetrical
-            let ghost_below_i = k_r.saturating_sub(i);  // effectively max(0, i - k_r)
-            let ghost_below_j = k_r.saturating_sub(j);  // "" for j
-            let ghost_above_i = (i + k_r + 1).saturating_sub(heights.nrows());  // effectively max(0, i + k_r - nrows)
-            let ghost_above_j = (j + k_r + 1).saturating_sub(heights.ncols());  // effectively max(0, i + k_r - ncols)
+            let h_i = mask.nrows() / 2;  // kernel width, (or radius iff mask is square / symmetrical)
+            let h_j = mask.ncols() / 2;  // kernel width, (or radius iff mask is square / symmetrical)
+            let ghost_below_i = h_i.saturating_sub(i);  // effectively max(0, i - k_r)
+            let ghost_below_j = h_j.saturating_sub(j);  // "" for j
+            let ghost_above_i = (i + h_i + 1).saturating_sub(heights.nrows());  // effectively max(0, i + k_r - nrows)
+            let ghost_above_j = (j + h_j + 1).saturating_sub(heights.ncols());  // effectively max(0, i + k_r - ncols)
 
             let slice = s![
-                i.saturating_sub(k_r + ghost_below_i) ..= (i + k_r - ghost_above_i),
-                j.saturating_sub(k_r + ghost_below_j) ..= (j + k_r - ghost_above_j),
+                i.saturating_sub(h_i + ghost_below_i) ..= (i + h_i - ghost_above_i),
+                j.saturating_sub(h_j + ghost_below_j) ..= (j + h_j - ghost_above_j),
             ];
 
             let mask_slice = s![
@@ -163,15 +166,11 @@ mod tests {
                 ghost_below_j .. (mask.ncols() - ghost_above_j),
             ];
 
-            let view = heights.slice(slice);
+            let view = heights.slice(slice).map(|v| *v as f64);
             let kernel = mask.slice(mask_slice);
-            let gradient = (&kernel * &view).sum() as f64 / kernel.sum() as f64;
+            let gradient = (&kernel * &view).sum() / 2.0;
 
-            let minimum = view.iter().min();
-            match Some(v) == minimum {
-                true => println!("*{:?}* in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, gradient),
-                false => println!("not {:?} in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, gradient),
-            }
+            println!("{:?} in:\n{}\n * \n{}\n ↓ \n{}\n", v, view, kernel, gradient);
         }
 
     }

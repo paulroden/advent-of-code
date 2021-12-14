@@ -186,7 +186,7 @@ mod tests {
 
         for i in 0..regions.nrows() {
             for j in 0..regions.ncols() {
-                let cell_value = unsafe { regions.uget((i, j)) };
+                let cell_value = regions.get((i, j)).unwrap();
                 match cell_value {
                     None => (),
                     // get adjacent cells from `regions` and check if any have already been filled
@@ -243,7 +243,9 @@ mod tests {
             }
         }
 
+        let regions_unwrapped = regions.mapv(|v| v.unwrap_or(0));
         println!("{:?}", regions);
+        println!("{:?}", regions_unwrapped);
         
     }
 
@@ -256,6 +258,66 @@ mod tests {
         let has_none = vec![Some(0), None];
         let all_none: Vec<Option<usize>> = vec![None, None];
         println!("{:?} -> {:?}", walk(&has_some), has_some.iter().max());
+    }
+
+    #[test]
+    fn stencil() {
+        use ndarray::prelude::*;
+
+        let heights = arr2(&[
+            [2, 1, 9, 9, 9, 4, 3, 2, 1, 0],
+            [3, 9, 8, 7, 8, 9, 4, 9, 2, 1],
+            [9, 8, 5, 6, 7, 8, 9, 8, 9, 2],
+            [8, 7, 6, 7, 8, 9, 6, 7, 8, 9],
+            [9, 8, 9, 9, 9, 6, 5, 6, 7, 8],
+        ]);
+
+        let boundary_value = 9;
+        let mut regions = heights.mapv(|v| match v == boundary_value {
+            true => None,
+            false => Some(0),
+        });
+        println!("{:?}", regions);
+
+        for ((i,j), value) in regions.indexed_iter() {
+            let view = regions.slice(s![
+                i.saturating_sub(1) .. regions.nrows().min(i + 2),
+                j.saturating_sub(1) .. regions.ncols().min(j + 2),
+            ]);
+            let view_centre = [1.min(i), 1.min(j)];
+            let adjacents = [
+                if i > 0 {
+                    view.get([i-1, j])
+                } else {
+                    None
+                },
+                if i < (regions.nrows() - 2) {
+                    view.get([i+1, j])
+                } else {
+                    None
+                },
+                if j > 0 {
+                    view.get([i, j-1])
+                } else {
+                    None
+                },
+                if j < (regions.ncols() - 2) {
+                    view.get([i, j+1])
+                } else {
+                    None
+                },
+            ];
+
+            println!("({}, {})", i, j);
+            println!("{:?}", view);
+            println!("{:?}", view.get(view_centre));
+            println!("{:?}", adjacents);
+
+            if (i,j) == (3,3) {
+                break
+            }
+            
+        }
     }
 
     #[test]

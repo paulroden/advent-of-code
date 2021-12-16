@@ -333,8 +333,7 @@ mod tests {
 
     #[test]
     fn walk_around() {
-        use ndarray::prelude::*;
-        // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=c028d61d2c2e31d8a3f54df45ffae6d3
+        use ndarray::prelude::{arr2, Array2};
         // neighbours: start from cell above centre point,
         // i.e. (-1,0) from centre; walk clockwise through elements
         // including initial element once more.
@@ -356,25 +355,29 @@ mod tests {
 
         // 
         // 
-        fn neighbours<'a>(
-            stencil: &ndarray::Array2<Option<i32>>,
-            centre: &[i32;2],
+        fn neighbours(
+            stencil: &Array2<Option<i32>>,
+            centre: &[i32; 2],
         ) -> Vec<i32> {
             (0..4)
             .flat_map(|k| {
+                // `ac` stencil-local co-ordinate for cell adjacent to
+                // centre in dimension 0
                 let ac = [
                     (centre[0] + phase(k)) as usize,
                     (centre[1] + phase(k + 1)) as usize,
                 ];
+                // `bc` stencil-local co-ordinate for cell adjacent to
+                // centre in dimension 1
                 let bc = [
                     (centre[0] + phase(k + 1)) as usize,
                     (centre[1] + phase(k + 2)) as usize,
                 ];
+                // diagonal cell of (a,b) -> d
                 let dc = [ac[k % 2], bc[(k + 1) % 2]];
                 
                 let a = stencil.get(ac);
                 let b = stencil.get(bc);
-
                 let d = if a == Some(&None) && b == Some(&None) {
                     None
                 } else {
@@ -383,9 +386,9 @@ mod tests {
                 [a, b, d]
             })
             .flatten() // flatten the 4 lists of neghbours
-            .flatten() // this removes any `None`s (cells on or beyond the boundary)
+            .flatten() // remove any `None`s from flat list (<=> cells on or beyond the boundary)
             .copied()
-            .collect::<Vec<_>>()
+            .collect()
         }
 
         let stencil = arr2(&[
@@ -399,6 +402,7 @@ mod tests {
             neighbours(&stencil, &centre),
             vec![3,2,3,4]
         );
+        println!("{:?}", neighbours(&stencil, &centre).iter().max());
     }
 
     #[test]

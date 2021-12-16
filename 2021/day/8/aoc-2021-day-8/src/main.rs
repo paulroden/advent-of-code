@@ -172,7 +172,6 @@ mod tests {
         });
         println!("{:?}", regions);
 
-        
         // cases:
         //  - all adjacent cells are boundary cells:
         //    cell is a singleton => increment counter and write to cell
@@ -246,7 +245,6 @@ mod tests {
         let regions_unwrapped = regions.mapv(|v| v.unwrap_or(0));
         println!("{:?}", regions);
         println!("{:?}", regions_unwrapped);
-        
     }
 
     #[test]
@@ -263,7 +261,6 @@ mod tests {
     #[test]
     fn stencil() {
         use ndarray::prelude::*;
-
         let heights = arr2(&[
             [2, 1, 9, 9, 9, 4, 3, 2, 1, 0],
             [3, 9, 8, 7, 8, 9, 4, 9, 2, 1],
@@ -279,45 +276,129 @@ mod tests {
         });
         println!("{:?}", regions);
 
-        for ((i,j), value) in regions.indexed_iter() {
-            let view = regions.slice(s![
-                i.saturating_sub(1) .. regions.nrows().min(i + 2),
-                j.saturating_sub(1) .. regions.ncols().min(j + 2),
-            ]);
-            let view_centre = [1.min(i), 1.min(j)];
-            let adjacents = [
-                if i > 0 {
-                    view.get([i-1, j])
-                } else {
-                    None
-                },
-                if i < (regions.nrows() - 2) {
-                    view.get([i+1, j])
-                } else {
-                    None
-                },
-                if j > 0 {
-                    view.get([i, j-1])
-                } else {
-                    None
-                },
-                if j < (regions.ncols() - 2) {
-                    view.get([i, j+1])
-                } else {
-                    None
-                },
-            ];
+        let mut counter = 1;
 
-            println!("({}, {})", i, j);
-            println!("{:?}", view);
-            println!("{:?}", view.get(view_centre));
-            println!("{:?}", adjacents);
-
-            if (i,j) == (3,3) {
-                break
+        for i in 0..regions.nrows() {
+            for j in 0..regions.ncols() {
+                let cell_value = regions.get((i, j)).unwrap();
+                // Check if this is a boundary cell
+                match cell_value {
+                    None => (),
+                    Some(_) => {
+                        let view = regions
+                            .slice(s![
+                                i.saturating_sub(1)..regions.nrows().min(i + 2),
+                                j.saturating_sub(1)..regions.ncols().min(j + 2),
+                            ])
+                            .into_owned();
+                        let neighbour = view.iter().flatten().max();
+                        match neighbour {
+                            // all adjacents are None => boundary cells
+                            None => {
+                                counter += 1;
+                                let cell = regions.get_mut((i, j)).unwrap();
+                                *cell = Some(counter);
+                                println!("GOT HERE!");
+                            }
+                            // one or more of the adjacent cells is not a boundary cell
+                            Some(&region_index) => {
+                                // if the max value here is 0, all non-boundary adjacent cells
+                                // are untouched, so need a new region index value
+                                if region_index == 0 {
+                                    counter += 1;
+                                    let cell = regions.get_mut((i, j)).unwrap();
+                                    *cell = Some(counter);
+                                // otherwise one of the adjacent cells belongs to a region
+                                // which has already been given an index value. Copy it to
+                                // this cell
+                                } else {
+                                    let cell = regions.get_mut((i, j)).unwrap();
+                                    *cell = Some(region_index);
+                                }
+                            }
+                        }
+                        println!("({}, {})", i, j);
+                        println!("view: {:?}", view);
+                        println!(" = {:?}", view.get((i, j)));
+                        // println!("adjacents: {:?}", adjacents.iter().flatten().collect::<Vec<_>>());
+                        // println!("diagonals: {:?}", diagonals.iter().flatten().collect::<Vec<_>>());
+                        println!("'neighbour' {:?}", neighbour);
+                    }
+                }
             }
-            
         }
+        println!("{}", heights);
+        println!("{:?}", regions);
+    }
+
+    #[test]
+    fn walk_around() {
+        use ndarray::prelude::*;
+        // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=c028d61d2c2e31d8a3f54df45ffae6d3
+        // neighbours: start from cell above centre point,
+        // i.e. (-1,0) from centre; walk clockwise through elements
+        // including initial element once more.
+        // e.g.:
+        //      █▒█
+        //      ▒██
+        //      ██▒
+        // true => boundary pixel ▒
+        // false => other pixel █
+        fn phase(k: usize) -> i32 {
+            match k % 4 {
+                0 => -1,
+                1 => 0,
+                2 => 1,
+                3 => 0,
+                _ => -1, // can't get here
+            }
+        }
+
+        // 
+        // 
+        fn neighbours<'a>(
+            stencil: &ndarray::Array2<Option<i32>>,
+            centre: &[i32;2],
+        ) -> Vec<i32> {
+            (0..4)
+            .flat_map(|k| {
+                let ac = [
+                    (centre[0] + phase(k)) as usize,
+                    (centre[1] + phase(k + 1)) as usize,
+                ];
+                let bc = [
+                    (centre[0] + phase(k + 1)) as usize,
+                    (centre[1] + phase(k + 2)) as usize,
+                ];
+                let dc = [ac[k % 2], bc[(k + 1) % 2]];
+                
+                let a = stencil.get(ac);
+                let b = stencil.get(bc);
+
+                let d = if a == Some(&None) && b == Some(&None) {
+                    None
+                } else {
+                    stencil.get(dc)
+                };
+                [a, b, d]
+            })
+            .flatten() // flatten the 4 lists of neghbours
+            .flatten() // this removes any `None`s (cells on or beyond the boundary)
+            .copied()
+            .collect::<Vec<_>>()
+        }
+
+        let stencil = arr2(&[
+            [Some(4), Some(3), Some(2)],
+            [None,    Some(4), None   ],
+            [Some(8), None,    Some(8)]
+        ]);
+        let centre = [1, 1];
+        
+        assert_eq!(
+            neighbours(&stencil, &centre),
+            vec![3,2,3,4]
+        );
     }
 
     #[test]

@@ -22,62 +22,62 @@ fn main() {
 
 }
 
-// neighbours: start from cell above centre point,
-        // i.e. (-1,0) from centre; walk clockwise through elements
-        // including initial element once more.
-        // e.g.:
-        //      █▒█
-        //      ▒██
-        //      ██▒
-        // true => boundary pixel ▒
-        // false => other pixel █
-        fn phase(k: usize) -> i32 {
-            match k % 4 {
-                0 => -1,
-                1 => 0,
-                2 => 1,
-                3 => 0,
-                _ => -1, // can't get here
-            }
+    // neighbours: start from cell above centre point,
+    // i.e. (-1,0) from centre; walk clockwise through elements
+    // including initial element once more.
+    // e.g.:
+    //      █▒█
+    //      ▒██
+    //      ██▒
+    // true => boundary pixel ▒
+    // false => other pixel █
+    fn phase(k: usize) -> i32 {
+        match k % 4 {
+            0 => -1,
+            1 => 0,
+            2 => 1,
+            3 => 0,
+            _ => -1, // can't get here
         }
+    }
 
-        // 
-        // 
-        fn neighbours(
-            stencil: &Array2<Option<i32>>,
-            centre: &[i32; 2],
-        ) -> Vec<i32> {
-            (0..4)
-            .flat_map(|k| {
-                // `ac` stencil-local co-ordinate for cell adjacent to
-                // centre in dimension 0
-                let ac = [
-                    (centre[0] + phase(k)) as usize,
-                    (centre[1] + phase(k + 1)) as usize,
-                ];
-                // `bc` stencil-local co-ordinate for cell adjacent to
-                // centre in dimension 1
-                let bc = [
-                    (centre[0] + phase(k + 1)) as usize,
-                    (centre[1] + phase(k + 2)) as usize,
-                ];
-                // diagonal cell of (a,b) -> d
-                let dc = [ac[k % 2], bc[(k + 1) % 2]];
-                
-                let a = stencil.get(ac);
-                let b = stencil.get(bc);
-                let d = if a == Some(&None) && b == Some(&None) {
-                    None
-                } else {
-                    stencil.get(dc)
-                };
-                [a, b, d]
-            })
-            .flatten() // flatten the 4 lists of neghbours
-            .flatten() // remove any `None`s from flat list (<=> cells on or beyond the boundary)
-            .copied()
-            .collect()
-        }
+    // 
+    // 
+    fn neighbours(
+        stencil: &Array2<Option<i32>>,
+        centre: &[i32; 2],
+    ) -> Vec<i32> {
+        (0..4)
+        .flat_map(|k| {
+            // `ac` stencil-local co-ordinate for cell adjacent to
+            // centre in dimension 0
+            let ac = [
+                (centre[0] + phase(k)) as usize,
+                (centre[1] + phase(k + 1)) as usize,
+            ];
+            // `bc` stencil-local co-ordinate for cell adjacent to
+            // centre in dimension 1
+            let bc = [
+                (centre[0] + phase(k + 1)) as usize,
+                (centre[1] + phase(k + 2)) as usize,
+            ];
+            // diagonal cell of (a,b) -> d
+            let dc = [ac[k % 2], bc[(k + 1) % 2]];
+            
+            let a = stencil.get(ac);
+            let b = stencil.get(bc);
+            let d = if a == Some(&None) && b == Some(&None) {
+                None
+            } else {
+                stencil.get(dc)
+            };
+            [a, b, d]
+        })
+        .flatten() // flatten the 4 lists of neghbours
+        .flatten() // remove any `None`s from flat list (<=> cells on or beyond the boundary)
+        .copied()
+        .collect()
+    }
 
 mod tests {
 

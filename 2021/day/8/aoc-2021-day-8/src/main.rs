@@ -31,6 +31,10 @@ fn main() {
 //      ██▒
 // true => boundary pixel ▒
 // false => other pixel █
+
+
+// encode modular phases iterating over adjacent cells in a clockwise direction
+// equivalent to taking the real part of $i^k$ for $k in {0,1,2,3}$.
 fn phase(k: usize) -> i32 {
     match k % 4 {
         0 => -1,
@@ -269,17 +273,6 @@ mod tests {
     }
 
     #[test]
-    fn test1() {
-        fn walk(xs: &[Option<usize>]) -> Option<usize> {
-            xs.iter().copied().flatten().max()
-        }
-        let has_some = vec![Some(1), Some(0), Some(4)];
-        let has_none = vec![Some(0), None];
-        let all_none: Vec<Option<usize>> = vec![None, None];
-        println!("{:?} -> {:?}", walk(&has_some), has_some.iter().max());
-    }
-
-    #[test]
     fn stencil() {
         use ndarray::prelude::*;
         let heights = arr2(&[
@@ -354,7 +347,7 @@ mod tests {
 
     #[test]
     fn walk_around() {
-        use ndarray::prelude::{arr2, Array2};
+        use ndarray::prelude::arr2;
         use crate::neighbours;
 
         let stencil = arr2(&[
@@ -374,7 +367,6 @@ mod tests {
     #[test]
     fn laplace() {
         use ndarray::prelude::*;
-        use std::cmp::Ordering;
 
         let heights = arr2(&[
             [2, 1, 9, 9, 9, 4, 3, 2, 1, 0],
@@ -425,8 +417,7 @@ mod tests {
 mod input {
     use ndarray::Array2;
     use std::fs::File;
-    use std::io::{self, prelude::*, BufReader};
-    use std::num::ParseIntError;
+    use std::io::{self, prelude::*};
     use std::path::Path;
 
     pub fn read_as_string(path: &Path) -> Result<String, io::Error> {

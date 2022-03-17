@@ -19,7 +19,6 @@ fn main() {
         }
     });
     println!("Risk Count: {}", count);
-
 }
 
 // neighbours: start from cell above centre point,
@@ -31,7 +30,6 @@ fn main() {
 //      ██▒
 // true => boundary pixel ▒
 // false => other pixel █
-
 
 // encode modular phases iterating over adjacent cells in a clockwise direction
 // equivalent to taking the real part of $i^k$ for $k in {0,1,2,3}$.
@@ -45,42 +43,39 @@ fn phase(k: usize) -> i32 {
     }
 }
 
-// 
-// 
-fn neighbours(
-    stencil: &Array2<Option<i32>>,
-    centre: &[i32; 2],
-) -> Vec<i32> {
+// Visit neighbours adjacent to cell at `centre`
+// ...
+fn neighbours(stencil: &Array2<Option<i32>>, centre: &[i32; 2]) -> Vec<i32> {
     (0..4)
-    .flat_map(|k| {
-        // `ac` stencil-local co-ordinate for cell adjacent to
-        // centre in dimension 0
-        let ac = [
-            (centre[0] + phase(k)) as usize,
-            (centre[1] + phase(k + 1)) as usize,
-        ];
-        // `bc` stencil-local co-ordinate for cell adjacent to
-        // centre in dimension 1
-        let bc = [
-            (centre[0] + phase(k + 1)) as usize,
-            (centre[1] + phase(k + 2)) as usize,
-        ];
-        // diagonal cell of (a,b) -> d
-        let dc = [ac[k % 2], bc[(k + 1) % 2]];
-        
-        let a = stencil.get(ac);
-        let b = stencil.get(bc);
-        let d = if a == Some(&None) && b == Some(&None) {
-            None
-        } else {
-            stencil.get(dc)
-        };
-        [a, b, d]
-    })
-    .flatten() // flatten the 4 lists of neghbours
-    .flatten() // remove any `None`s from flat list (<=> cells on or beyond the boundary)
-    .copied()
-    .collect()
+        .flat_map(|k| {
+            // `ac` stencil-local co-ordinate for cell adjacent to
+            // centre in dimension 0
+            let ac = [
+                (centre[0] + phase(k)) as usize,
+                (centre[1] + phase(k + 1)) as usize,
+            ];
+            // `bc` stencil-local co-ordinate for cell adjacent to
+            // centre in dimension 1
+            let bc = [
+                (centre[0] + phase(k + 1)) as usize,
+                (centre[1] + phase(k + 2)) as usize,
+            ];
+            // diagonal cell of (a,b) -> d
+            let dc = [ac[k % 2], bc[(k + 1) % 2]];
+
+            let a = stencil.get(ac);
+            let b = stencil.get(bc);
+            let d = if a == Some(&None) && b == Some(&None) {
+                None
+            } else {
+                stencil.get(dc)
+            };
+            [a, b, d]
+        })
+        .flatten() // flatten the 4 lists of neighbours
+        .flatten() // remove any `None`s from flat list (<=> cells on or beyond the boundary)
+        .copied()
+        .collect()
 }
 
 mod tests {
@@ -347,21 +342,119 @@ mod tests {
 
     #[test]
     fn walk_around() {
-        use ndarray::prelude::arr2;
         use crate::neighbours;
+        use ndarray::prelude::arr2;
 
         let stencil = arr2(&[
             [Some(4), Some(3), Some(2)],
-            [None,    Some(4), None   ],
-            [Some(8), None,    Some(8)]
+            [None, Some(4), None],
+            [Some(8), None, Some(8)],
         ]);
         let centre = [1, 1];
-        
-        assert_eq!(
-            neighbours(&stencil, &centre),
-            vec![3,2,3,4]
-        );
+
+        assert_eq!(neighbours(&stencil, &centre), vec![3, 2, 3, 4]);
         println!("{:?}", neighbours(&stencil, &centre).iter().max());
+    }
+
+    #[test]
+    fn stencil_bounds() {
+        use ndarray::prelude::*;
+        use ndarray::{IntoDimension, NdIndex};
+        use ndarray::{Ix, IxDyn, Ixs, SliceInfo, SliceInfoElem};
+
+        let ux: [Ix; 2] = [2, 3];
+        let ix: [Ixs; 2] = [-2, -3];
+        let u1 = Ix1(2);
+
+        let sl = SliceInfoElem::Slice {
+            start: -2,
+            end: Some(2),
+            step: 1,
+        };
+
+        fn get_unbounded<'a, S, D>(
+            a: &'a Array<S, D>,
+            index: &Array<Ix, D>,
+            offset: &Array<Ixs, D>,
+        ) -> Option<&'a S>
+        where
+            D: Dimension,
+            Array<Ix, D>: NdIndex<D>,
+        {
+            if index.ndim() != offset.ndim() {
+                panic!(
+                    "index of {} dimensions does not match offset of {}",
+                    index.ndim(),
+                    offset.len()
+                );
+                todo!("this should be handled at the type level");
+            } else {
+                // check if the index with offset is outside the bounds of array `a` as:
+                // (a) less than zero on any axis
+                let is_outside_zero_bound =
+                    index.iter().zip(offset).any(|(i, k)| (*i as Ixs + k) < 0);
+                // (b) index with offset is greater than length of any respective axis
+                let is_outside_max_bound = index
+                    .iter()
+                    .zip(offset)
+                    .zip(a.shape())
+                    .any(|((i, k), l)| (*i as Ixs + k) > (*l as isize));
+                if is_outside_zero_bound || is_outside_max_bound {
+                    None
+                } else {
+                    let offset_index = (index + offset.map(|x| *x as Ix)).into_raw_vec();
+                    a.get(index)
+                }
+            }
+        }
+
+        let array_1d = arr1(&[2, 1, 9, 9, 9, 4, 3, 2, 1, 0]);
+
+        let array_2d = arr2(&[
+            [2, 1, 9, 9, 9, 4, 3, 2, 1, 0],
+            [3, 9, 8, 7, 8, 9, 4, 9, 2, 1],
+            [9, 8, 5, 6, 7, 8, 9, 8, 9, 2],
+            [8, 7, 6, 7, 8, 9, 6, 7, 8, 9],
+            [9, 8, 9, 9, 9, 6, 5, 6, 7, 8],
+        ]);
+
+        let indy = [2, 100];
+
+        let got = array_2d.get(indy);
+        let maybegot = get_unbounded(&array_2d, &arr2(&[0, 1]), &arr2(&[-2, -2]));
+
+        dbg!(array_2d.dim());
+        dbg!(got);
+        // dbg!(get_unbounded(&array_1d, arr1(&[1]), -2));
+
+        // a stencil is composed of a slice (c.f. `s![]` documentation..?)
+        // and a mask... ok, lets just work on the slice element
+
+        // e.g.
+        // (i-2..i+2)
+
+        fn get_unsat<A, D>(array: &Array<A, D>, k: Ix, dk: Ix) -> Option<usize>
+        where
+            D: Dimension,
+        {
+            None
+            // match (k as isize + dk) > 0 {
+            //     true => Some(array.get( k + dk )),
+            //     false => None,
+            // }
+        }
+
+        for i in 0..array_1d.len() - 1 {
+            // let st = (i-2..i+2).map(|k| k )
+            // print!("{}: {:?}, ", i-1, array_1d.get(unsat(i,-1)));
+            print!("{}: {:?}, ", i, array_1d.get(i));
+            print!("{}: {:?}, ", i + 1, array_1d.get(i + 1));
+            // dbg!(i, array_1d.slice(s![i-1..i+1]));
+            // println!();
+        }
+
+        println!("1d: {:?}", array_1d.dim());
+        // println!("2d: {:?}", array_2d.dim());
     }
 
     #[test]
